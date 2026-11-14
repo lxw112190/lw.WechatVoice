@@ -51,8 +51,12 @@ jobs:
         with:
           name: lw.WechatVoice-win-x64
           path: |
-            deliveries/**/*.zip
-            deliveries/**/*.sha256
+            deliveries/*/WechatVoice-Workshop-*-win-x64.zip
+            deliveries/*/WechatVoice-Workshop-*-win-x64.zip.sha256
+            deliveries/*/WechatVoice-Workshop-*-source.zip
+            deliveries/*/WechatVoice-Workshop-*-source.zip.sha256
+            deliveries/lw.WechatVoice-git-source.zip
+            deliveries/lw.WechatVoice-git-source.zip.sha256
           if-no-files-found: error
           retention-days: 14
   release:
@@ -73,7 +77,8 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         shell: bash
         run: |
-          mapfile -d '' files < <(find artifacts -type f \( -name '*.zip' -o -name '*.sha256' \) -print0)
+          mapfile -d '' files < <(find artifacts -type f \( -name 'WechatVoice-Workshop-*-win-x64.zip' -o -name 'WechatVoice-Workshop-*-source.zip' -o -name 'WechatVoice-Workshop-*-win-x64.zip.sha256' -o -name 'WechatVoice-Workshop-*-source.zip.sha256' -o -name 'lw.WechatVoice-git-source.zip' -o -name 'lw.WechatVoice-git-source.zip.sha256' \) -print0)
+          if [[ "${#files[@]}" -ne 6 ]]; then echo 'Expected exactly three packages and three checksums'; exit 1; fi
           flags=()
           if [[ "$RELEASE_TAG" == *-* ]]; then flags+=(--prerelease); fi
           gh release create "$RELEASE_TAG" "${files[@]}" --verify-tag --title "$RELEASE_TAG" --generate-notes "${flags[@]}"
