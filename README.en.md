@@ -6,7 +6,7 @@
 
 C# / .NET Framework 4.8, native SILK decoding, and optional offline SenseVoice transcription. Browse conversations, filter dates, preview audio and export batches with searchable filenames and CSV manifests. No Python, GPU or cloud API is required to run the packaged application.
 
-Current version: **1.0.0-preview18**. Windows 10/11 x64. WeChat 4.x processes may be attempted after explicit user consent, but this is **not a claim of universal 4.x compatibility**. The current C# engine and snapshot changes have synthetic regression coverage; current real-account verification remains pending.
+Current stable release: **1.0.0**. Windows 10/11 x64. WeChat 4.x processes may be attempted after explicit user consent, but this is **not a claim of universal 4.x compatibility**. The current C# engine and snapshot changes have passed CI synthetic regression coverage; current real-account verification remains pending.
 
 ![Workshop with synthetic test data](docs/images/workshop-synthetic.png)
 
@@ -34,7 +34,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-release.ps1
 
 The restore script verifies pinned hashes. Small native runtime files and SILK sources are vendored; the 239 MB model is downloaded from its public host. Full release and offline-source packages retain the model and DirectML. Current transcription uses CPU, not the DirectML GPU provider.
 
-The planned repository name is `lxw112190/lw.WechatVoice`; preparation does not create a remote repository. CI builds artifacts on pushes/PRs. Only a pushed `v*` tag matching `VERSION` publishes a GitHub Release; preview tags create prereleases.
+Download from [GitHub Releases](https://github.com/lxw112190/lw.WechatVoice/releases). CI builds artifacts on pushes/PRs. Only a pushed `v*` tag matching `VERSION` publishes a GitHub Release; preview tags create prereleases.
 
 See [build documentation](docs/build.md), [architecture](docs/architecture.md), [contributing](CONTRIBUTING.md), [changelog](CHANGELOG.md) and [third-party notices](THIRD-PARTY-NOTICES.md). These detailed documents are currently in Chinese.
 

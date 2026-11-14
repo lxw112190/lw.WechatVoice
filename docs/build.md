@@ -40,7 +40,7 @@ python tools/export-repository.py --output deliveries/lw.WechatVoice-git-source.
 
 `.github/workflows/windows.yml` 在普通推送、PR、手动触发时编译并上传 Artifact。只有 `push` 的 `v*` 标签才启动有写权限的 Release job，且标签必须等于 `v` 加 `VERSION`。包含连字符的预览版标为 prerelease。PR 不发布，不使用个人 Token；不访问真实微信进程和账号。
 
-当前 `VERSION` 为 `1.0.0-preview18`。正式 `v1.0.0` 前应完成当前引擎的授权真实账号复测，确认部署包可用，再更新 VERSION、原生 self-test 和相应验包断言；不能仅修改包名宣称正式兼容。
+当前正式发布版本为 `1.0.0`。升级版本时同步 VERSION、原生 self-test 与界面诊断版本，并更新发布说明。发布级别不等于全部微信版本兼容，真实账号验证范围仍须如实记录，不能仅修改包名宣称正式兼容。
 
 远程仓库由用户自行创建为 `lw.WechatVoice`。从已检查的公开 ZIP 解压后的 `lw.WechatVoice` 目录执行：
 
@@ -53,11 +53,11 @@ git remote add origin https://github.com/lxw112190/lw.WechatVoice.git
 git push -u origin main
 ```
 
-首次先看 Actions 是否通过，再决定是否推预览标签：
+先看 Actions 是否通过，再推送匹配版本的标签：
 
 ```powershell
-git tag v1.0.0-preview18
-git push origin v1.0.0-preview18
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
-本轮不会自动创建远程仓库、提交、推送或发布。
+日常变更由用户自行提交；仅在用户明确要求发布时执行版本提交、标签推送与 Release 发布。

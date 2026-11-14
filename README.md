@@ -6,9 +6,9 @@
 
 Windows x64 桌面工具，使用 **C# / .NET Framework 4.8 + 原生 SILK 解码 + 本地 SenseVoice 识别**。按会话、日期筛选电脑本地已有的语音，试听、批量导出，并用识别文字命名。不需要 Python、云端接口或 GPU。
 
-当前版本 **1.0.0-preview18**，仍为预览版。面向 Windows 微信 4.x 按实际数据验证尝试连接，**不承诺所有 4.x 均兼容**；preview18 的 C# 引擎与有效页修复已通过合成回归，仍待真实账号复测。早期引擎的 4.0.5.16 / 4.1.0.30 授权验证不能当作当前版本验收。
+当前正式版本 **1.0.0**。面向 Windows 微信 4.x 按实际数据验证尝试连接，**不承诺所有 4.x 均兼容**；当前 C# 引擎与有效页修复已通过 CI 合成回归，仍待真实账号复测。早期引擎的 4.0.5.16 / 4.1.0.30 授权验证不能当作当前版本验收。
 
-计划公开仓库名为 `lxw112190/lw.WechatVoice`，本地整理不代表已创建或发布远程仓库。建立仓库后，从 GitHub 的 **Actions** 下载每次构建产物；推送匹配 `VERSION` 的 `v*` 标签才发布 Release。
+[下载正式发布包](https://github.com/lxw112190/lw.WechatVoice/releases) · [CI 构建产物](https://github.com/lxw112190/lw.WechatVoice/actions)。普通推送编译打包；推送匹配 `VERSION` 的 `v*` 标签才发布 Release。
 
 ## 可以做什么
 

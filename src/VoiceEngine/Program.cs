@@ -117,7 +117,7 @@ namespace VoiceEngine
             if (action == "catalog") return Catalog(request, workspace, check, connectionReport, serializer);
             if (action == "self-test")
                 return new Dictionary<string, object> {
-                    ["worker"] = "1.0.0-preview18", ["codec"] = "0.2.8-sdk-507be6bc",
+                    ["worker"] = "1.0.0", ["codec"] = "0.2.8-sdk-507be6bc",
                     ["target_wechat"] = Capture.TargetVersion, ["verified_wechat_version"] = Capture.VerifiedVersion,
                     ["native_tests"] = false };
             var paths = Export.SessionPaths(workspace, request.ContainsKey("session") ? request["session"] : null);
