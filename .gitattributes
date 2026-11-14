@@ -1,0 +1,11 @@
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.sln text eol=crlf
+*.dll binary
+*.onnx binary
+*.png binary
+*.zip binary
+# SDK provenance hashes cover original bytes. Do not normalize vendored sources.
+third_party/silk-sdk/** -text
+third_party/asr/** -text

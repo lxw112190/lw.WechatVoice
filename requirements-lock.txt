@@ -1,0 +1,5 @@
+# Python 3.12 x64, Windows wheels only. pip download --require-hashes -r requirements-lock.txt -d .deps/wheels
+pycryptodomex==3.23.0 --hash=sha256:52e5ca58c3a0b0bd5e100a9fbc8015059b05cffc6c66ce9d98b4b45e023443b9
+silk-python==0.2.8 --hash=sha256:b9bb030589150e0d91f8148971eebf6f9211e6839af64dd39b26b9802be242b0
+cffi==2.1.1 --hash=sha256:f53e442b08449d42821fa4a4fba000095af9f62742a500f978a9f557ec44339a
+pycparser==3.12 --hash=sha256:a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e

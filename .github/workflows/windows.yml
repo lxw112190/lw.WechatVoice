@@ -1,0 +1,79 @@
+name: Windows build and release
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: x64
+      - name: Check tag against VERSION
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $expected='v'+(Get-Content VERSION -Raw).Trim()
+          if($env:GITHUB_REF_NAME -cne $expected){throw "Tag must match VERSION: $expected"}
+      - name: Restore verified dependency cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .deps/asr-kids
+            .deps/wheels
+          key: windows-deps-${{ hashFiles('asr-resources.json', 'requirements-lock.txt') }}
+      - name: Build, test and package
+        shell: pwsh
+        run: ./tools/build-release.ps1
+      - name: Export public Git source
+        run: python tools/export-repository.py --output deliveries/lw.WechatVoice-git-source.zip
+      - name: Verify clean public Git source
+        run: python tools/verify-repository.py deliveries/lw.WechatVoice-git-source.zip
+      - name: Hash public source archive
+        shell: pwsh
+        run: |
+          $file=Get-Item deliveries/lw.WechatVoice-git-source.zip
+          $hash=(Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          [IO.File]::WriteAllText($file.FullName+'.sha256',$hash+'  '+$file.Name+"`n",[Text.Encoding]::ASCII)
+      - name: Upload deployment and source packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: lw.WechatVoice-win-x64
+          path: |
+            deliveries/**/*.zip
+            deliveries/**/*.sha256
+          if-no-files-found: error
+          retention-days: 14
+  release:
+    if: startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push'
+    needs: windows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: lw.WechatVoice-win-x64
+          path: artifacts
+      - name: Publish tagged release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          mapfile -d '' files < <(find artifacts -type f \( -name '*.zip' -o -name '*.sha256' \) -print0)
+          flags=()
+          if [[ "$RELEASE_TAG" == *-* ]]; then flags+=(--prerelease); fi
+          gh release create "$RELEASE_TAG" "${files[@]}" --verify-tag --title "$RELEASE_TAG" --generate-notes "${flags[@]}"

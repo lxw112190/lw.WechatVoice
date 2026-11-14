@@ -1,0 +1,5 @@
+SQLite 3.45.3
+
+SQLite is in the public domain.
+Official copyright and public-domain statement: https://sqlite.org/copyright.html
+No SQLCipher binary is distributed; this application's authenticated page reader is its own implementation using PyCryptodome.

@@ -1,0 +1,80 @@
+{
+  "source": "Pinned reusable ASR resources; original import: KidsVoice r5",
+  "sherpa": "2.0.1",
+  "native_speech_api_original_sha256": "d54bb8b216b74f63cc0d552d8cf55b9e12e7ba732a64771df1589d5de0dcccbb",
+  "files": [
+    {
+      "path": "models/sensevoice/model.int8.onnx",
+      "bytes": 239233841,
+      "sha256": "c71f0ce00bec95b07744e116345e33d8cbbe08cef896382cf907bf4b51a2cd51",
+      "source": "models/sensevoice/model.int8.onnx",
+      "download_url": "https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/resolve/6a65851/model.int8.onnx"
+    },
+    {
+      "path": "models/sensevoice/tokens.txt",
+      "bytes": 315894,
+      "sha256": "f449eb28dc567533d7fa59be34e2abca8784f771850c78a47fb731a31429a1dc",
+      "source": "models/sensevoice/tokens.txt"
+    },
+    {
+      "path": "models/sensevoice/LICENSE",
+      "bytes": 71,
+      "sha256": "221c6df10b0931a5629adad671ea48fb7747e034c414b6d2bfa275bc3dd4ea17",
+      "source": "models/sensevoice/LICENSE"
+    },
+    {
+      "path": "models/sensevoice/README.md",
+      "bytes": 104,
+      "sha256": "763991a00edaea534ab36bf1b7cf89e61e911666dcfabbba71f91f9f7c593a63",
+      "source": "models/sensevoice/README.md"
+    },
+    {
+      "path": "DirectML.dll",
+      "bytes": 18527776,
+      "sha256": "9c9e6d822561c6c41b90e6994b3e8857cf1d66dbfb1e0c4c799c7c89b4e92da1",
+      "source": "runtime/DirectML.dll"
+    },
+    {
+      "path": "msvcp140_1.dll",
+      "bytes": 35808,
+      "sha256": "91cd05c16c61c39788c47434602a59c17f5b08dbb3eee04ce85f8d5b70e8e604",
+      "source": "runtime/msvcp140_1.dll"
+    },
+    {
+      "path": "msvcp140.dll",
+      "bytes": 575056,
+      "sha256": "a4c2229bdc2a2a630acdc095b4d86008e5c3e3bc7773174354f3da4f5beb9cde",
+      "source": "runtime/msvcp140.dll"
+    },
+    {
+      "path": "onnxruntime.dll",
+      "bytes": 17201208,
+      "sha256": "f5131591edac6b0a8090d0e329040a49319d7a689cb5b465235fbf7030fa8027",
+      "source": "runtime/onnxruntime.dll"
+    },
+    {
+      "path": "sherpa-onnx-c-api.dll",
+      "bytes": 4145152,
+      "sha256": "e6da014ee7e3bfc08b01518588b53afcffe593f0df99ebf0a5fb9d28717e04de",
+      "source": "runtime/sherpa-onnx-c-api.dll"
+    },
+    {
+      "path": "vcruntime140_1.dll",
+      "bytes": 49640,
+      "sha256": "7dd9aa02e271c68ca6d5f18d651d23a15d7259715af43326578f7dde27f37637",
+      "source": "runtime/vcruntime140_1.dll"
+    },
+    {
+      "path": "vcruntime140.dll",
+      "bytes": 119888,
+      "sha256": "02c6aa0e6e624411a9f19b0360a7865ab15908e26024510e5c38a9c08362c35a",
+      "source": "runtime/vcruntime140.dll"
+    },
+    {
+      "path": "sherpa-onnx.dll",
+      "bytes": 53248,
+      "sha256": "6820159e24d33bfea3dfe94d30cf097b9249ed039cd638a4116fc38e4b32b9ee",
+      "source": "third_party/sherpa/lib/net45/sherpa-onnx.dll"
+    }
+  ]
+}

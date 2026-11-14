@@ -1,0 +1,23 @@
+name: 问题反馈
+description: 连接、导出或识别问题
+body:
+  - type: markdown
+    attributes:
+      value: "请勿上传真实数据库、语音、密钥或内存转储。诊断包也请先自行检查。"
+  - type: input
+    id: version
+    attributes:
+      label: 工具版本、Windows 版本、微信完整版本
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤、预期行为与实际结果
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostic
+    attributes:
+      label: 诊断代码与请求编号
+      description: 例如 PAGE_AUTH_FAILED。不要粘贴账号路径或聊天内容。
