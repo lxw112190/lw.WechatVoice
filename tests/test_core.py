@@ -183,13 +183,37 @@ class CoreTests(unittest.TestCase):
     def test_connect_uses_only_explicit_pid_and_account(self):
         source=dataset(self.root/'source');work=self.root/'work'
         def scanner(pid,folder,check,progress):
-            self.assertEqual(pid,1234);self.assertEqual(Path(folder),source)
+            # Windows TEMP can contain an 8.3 alias (RUNNER~1); databases()
+            # resolves it to the long path. Compare directory identity, not spelling.
+            self.assertEqual(pid,1234);self.assertTrue(Path(folder).samefile(source))
             return source,{}, {'matched':0,'encrypted':0,'version':'4.0.5.16'}
         with patch.object(capture,'scan',side_effect=scanner):
             report=cli.execute({'action':'connect','source':str(source),'pid':1234,'consent':True,'workspace':str(work)})
         self.assertEqual(report['count'],3);self.assertEqual(report['snapshot_mode'],'online-per-database')
         with self.assertRaisesRegex(ValueError,'授权'):
             cli.execute({'action':'connect','source':str(source),'pid':1234,'workspace':str(work)})
+    def test_connect_account_identity_survives_path_aliases(self):
+        source=dataset(self.root/'long source account');other=dataset(self.root/'other account')
+        aliases=[source,source/'..'/source.name]
+        if os.name=='nt':
+            api=ctypes.WinDLL('kernel32',use_last_error=True)
+            api.GetShortPathNameW.argtypes=[ctypes.c_wchar_p,ctypes.c_wchar_p,ctypes.c_uint32]
+            api.GetShortPathNameW.restype=ctypes.c_uint32
+            buffer=ctypes.create_unicode_buffer(32768)
+            size=api.GetShortPathNameW(str(source.resolve()),buffer,len(buffer))
+            if 0<size<len(buffer): aliases.append(Path(buffer.value))
+        def scanner(pid,folder,check,progress):
+            self.assertEqual(pid,1234)
+            self.assertTrue(Path(folder).samefile(source))
+            self.assertFalse(Path(folder).samefile(other))
+            return Path(folder),{}, {'matched':0,'encrypted':0,'version':'4.0.5.16'}
+        with patch.object(capture,'scan',side_effect=scanner) as scan:
+            for number,alias in enumerate(aliases):
+                with self.subTest(alias_number=number):
+                    report=cli.execute({'action':'connect','source':str(alias),'pid':1234,'consent':True,'workspace':str(self.root/('work-'+str(number)))})
+                    self.assertEqual(report['count'],3)
+                    self.assertEqual(report['snapshot_mode'],'online-per-database')
+            self.assertEqual(scan.call_count,len(aliases))
     def test_encrypted_wal_replay(self):
         plain=self.wal_fixture(True);source=self.root/'cipher.db';dest=self.root/'out.db';key=b'a'*32;salt=b'b'*16
         encrypted_file(plain,source,key,salt);transform_wal(Path(str(plain)+'-wal'),Path(str(source)+'-wal'),key,salt)
