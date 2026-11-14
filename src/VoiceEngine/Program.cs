@@ -26,6 +26,10 @@ namespace VoiceEngine
             // Redirected stdin/stdout default to the OEM codepage; the protocol
             // is UTF-8 (Chinese paths and transcripts must survive).
             try { Console.InputEncoding = new UTF8Encoding(false); Console.OutputEncoding = new UTF8Encoding(false); } catch { }
+            // .NET Framework's redirected StandardInput writer can emit a BOM
+            // under codepage 65001. Console.In does not detect that preamble;
+            // consume it once at the transport boundary before parsing NDJSON.
+            Console.SetIn(new StreamReader(Console.OpenStandardInput(), new UTF8Encoding(false), true));
             baseDir = AppDomain.CurrentDomain.BaseDirectory;
             var serializer = new JavaScriptSerializer();
             var started = DateTime.UtcNow;

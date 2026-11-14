@@ -16,6 +16,7 @@ namespace WechatVoice.Asr
         private static int Main()
         {
             SetErrorMode(3);Console.InputEncoding=new UTF8Encoding(false);Console.OutputEncoding=new UTF8Encoding(false);
+            Console.SetIn(new StreamReader(Console.OpenStandardInput(),new UTF8Encoding(false),true));
             var json=new JavaScriptSerializer {MaxJsonLength=65536};IntPtr recognizer=IntPtr.Zero;
             try
             {

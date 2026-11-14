@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Text;
 using System.Web.Script.Serialization;
 internal static class CodecCheck
 {
@@ -56,11 +57,18 @@ internal static class CodecCheck
             }
             // isolated subprocess: decode via the engine's own --decode child
             string multi = Path.Combine(root, "multi");
-            string isolatedTarget = Path.Combine(root, "isolated-" + Guid.NewGuid().ToString("N") + ".wav");
-            double isolatedDuration = (double)Invoke(isolated, Path.Combine(multi, "source.silk"), isolatedTarget, new Action(() => { }));
-            Require(BytesEqual(File.ReadAllBytes(isolatedTarget), File.ReadAllBytes(Path.Combine(multi, "expected.wav"))), "isolated decode bytes differ");
-            Require(Math.Abs(isolatedDuration - 1.0) < 1e-9, "isolated duration differs");
-            File.Delete(isolatedTarget);
+            // Reproduce both legacy consoles and CI's codepage 65001. On .NET
+            // Framework the latter writes a BOM even when using BaseStream.
+            foreach (Encoding inputEncoding in new Encoding[] { Encoding.GetEncoding(437), Encoding.UTF8 })
+            {
+                Console.InputEncoding = inputEncoding;
+                string isolatedTarget = Path.Combine(root, "isolated-" + Guid.NewGuid().ToString("N") + ".wav");
+                double isolatedDuration = (double)Invoke(isolated, Path.Combine(multi, "source.silk"), isolatedTarget, new Action(() => { }));
+                Require(BytesEqual(File.ReadAllBytes(isolatedTarget), File.ReadAllBytes(Path.Combine(multi, "expected.wav"))), "isolated decode bytes differ");
+                Require(Math.Abs(isolatedDuration - 1.0) < 1e-9, "isolated duration differs");
+                File.Delete(isolatedTarget);
+                Console.WriteLine("PASS: isolated decode under input codepage " + inputEncoding.CodePage);
+            }
             // cancellation: a throwing check aborts the child and leaves no target
             string cancelledTarget = Path.Combine(root, "isolated-cancel-" + Guid.NewGuid().ToString("N") + ".wav");
             bool aborted = false;

@@ -5,6 +5,7 @@
 *.dll binary
 *.onnx binary
 *.png binary
+*.jpg binary
 *.zip binary
 # SDK provenance hashes cover original bytes. Do not normalize vendored sources.
 third_party/silk-sdk/** -text

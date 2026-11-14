@@ -88,3 +88,13 @@ licenses/                 第三方许可原文
 项目自有代码采用 [MIT License](LICENSE)。第三方组件、模型及格式参考保持各自条款，详见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) 与 `licenses/`；MIT 不覆盖这些第三方材料。
 
 感谢 ChatTrace、Moect、SILK SDK、sherpa-onnx、SenseVoice、ONNX Runtime 等项目提供的格式参考、模型与底层能力。当前工具不是微信官方产品，与微信官方无关联。
+
+## 联系与支持
+
+- 作者：天天代码码天天
+- QQ：819069052
+- QQ Group: 天天代码码天天 | 群号: 264292622
+
+如果项目对你有帮助，可以扫码支持维护：
+
+<img src="assets/sponsor.jpg" alt="支持维护" width="220">

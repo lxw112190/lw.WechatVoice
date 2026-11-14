@@ -23,6 +23,7 @@ internal static class EngineRobustnessCheck
     {
         Console.InputEncoding = System.Text.Encoding.UTF8;
         Console.OutputEncoding = new System.Text.UTF8Encoding(false);
+        Console.SetIn(new StreamReader(Console.OpenStandardInput(), new System.Text.UTF8Encoding(false), true));
         string line;
         while ((line = Console.ReadLine()) != null)
         {
@@ -49,6 +50,7 @@ internal static class EngineRobustnessCheck
         if (args.Length == 0) { FakeRecognizer(); return 0; }
         try
         {
+            Console.InputEncoding = System.Text.Encoding.UTF8;
             var assembly = Assembly.LoadFrom(Path.GetFullPath(args[0]));
             string root = Path.GetFullPath(args[1]);
             Directory.CreateDirectory(root);

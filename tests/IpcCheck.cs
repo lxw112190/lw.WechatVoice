@@ -10,6 +10,7 @@ internal static class IpcCheck
     {
         try
         {
+            Console.InputEncoding = System.Text.Encoding.UTF8; // CI-style BOM on redirected child stdin
             var result = WorkerClient.RunAsync(args[0], new Dictionary<string, object> { ["action"]="catalog", ["source"]=args[1], ["consent"]=true, ["workspace"]=args[2] }, p => Console.WriteLine(WorkerClient.Get(p,"phase"))).GetAwaiter().GetResult();
             foreach(var item in result) Console.WriteLine(item.Key+"="+item.Value+" ("+(item.Value==null?"null":item.Value.GetType().FullName)+")");
             var listing=WorkerClient.RunAsync(args[0], new Dictionary<string, object> { ["action"]="list",["session"]=result["session"],["workspace"]=args[2] },p=>{}).GetAwaiter().GetResult();

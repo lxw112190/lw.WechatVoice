@@ -49,11 +49,12 @@ def package():
     for name in ['README.md','README.en.md','LICENSE','VERSION','CHANGELOG.md','THIRD-PARTY-NOTICES.md','dependency-provenance.json']:
         shutil.copyfile(ROOT/name,binary/name)
     shutil.copytree(ROOT/'licenses',binary/'licenses');shutil.copytree(ROOT/'docs',binary/'docs')
+    shutil.copytree(ROOT/'assets',binary/'assets')
     (binary/'version.json').write_text(json.dumps({'version':VERSION,'target_wechat':'4.x','previously_verified_wechat':['4.0.5.16'],'real_account_verified':False,'platform':'win-x64'},indent=2),encoding='utf-8')
     source=delivery/('WechatVoice-Workshop-'+VERSION+'-source');source.mkdir()
     for name in ['AGENTS.md','.gitignore','.gitattributes','.editorconfig','LICENSE','VERSION','CHANGELOG.md','CONTRIBUTING.md','SECURITY.md','WechatVoice.Workshop.sln','README.md','README.en.md','THIRD-PARTY-NOTICES.md','requirements-lock.txt','dependency-provenance.json','asr-resources.json']:
         shutil.copyfile(ROOT/name,source/name)
-    for directory in ['worker','src','tests','tools','licenses','docs','.github','third_party']:
+    for directory in ['worker','src','tests','tools','licenses','docs','.github','third_party','assets']:
         shutil.copytree(ROOT/directory,source/directory,ignore=shutil.ignore_patterns('bin','obj','__pycache__','*.user'))
     shutil.copytree(ROOT/'.deps/wheels',source/'.deps/wheels')
     shutil.copytree(ROOT/'.deps/asr-kids',source/'.deps/asr-kids')

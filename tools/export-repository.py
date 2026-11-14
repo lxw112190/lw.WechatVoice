@@ -8,7 +8,7 @@ FILES = ['README.md', 'README.en.md', 'LICENSE', 'VERSION', 'CHANGELOG.md',
          'CONTRIBUTING.md', 'SECURITY.md', 'AGENTS.md', '.gitignore', '.gitattributes',
          '.editorconfig', 'WechatVoice.Workshop.sln', 'requirements-lock.txt',
          'asr-resources.json', 'THIRD-PARTY-NOTICES.md']
-DIRS = ['src', 'worker', 'tests', 'tools', 'licenses', 'docs', '.github', 'third_party']
+DIRS = ['src', 'worker', 'tests', 'tools', 'licenses', 'docs', '.github', 'third_party', 'assets']
 SKIP = {'bin', 'obj', '__pycache__', '.vs'}
 PRIVATE = {'.db', '.sqlite', '.sqlite3', '.silk', '.wav', '.pcm', '.dmp', '.key', '.dpapi', '.log', '.user', '.suo'}
 
