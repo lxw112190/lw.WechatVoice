@@ -26,7 +26,8 @@ namespace VoiceEngine
             "read_calls","read_failures","partial_reads","last_read_error","region_count",
             "snapshot_stage","bytes_current","bytes_total","speed_mb_s",
             "attempt","inner_depth","page_number","sqlite_code","sqlite_version","media_sources","schema_flags","valid_media",
-            "physical_pages","logical_pages","declared_pages","free_leaf_pages","wal_committed_pages"
+            "physical_pages","logical_pages","declared_pages","free_leaf_pages","wal_committed_pages",
+            "favorites","favorite_missing","favorite_cache_present","favorite_cache_scanned","favorite_cache_hits","favorite_server_hits","favorite_ambiguous","favorite_md5_rejected","favorite_no_server","favorite_cache_unreadable"
         };
         private static readonly Regex ValuePattern = new Regex("^[A-Za-z0-9_. -]{1,90}$", RegexOptions.Compiled);
         private static string path;
@@ -74,7 +75,7 @@ namespace VoiceEngine
                     if (File.Exists(backup)) File.Delete(backup);
                     File.Move(path, backup);
                 }
-                File.AppendAllText(path, Json(record) + "\n", Encoding.UTF8);
+                File.AppendAllText(path, Json(record) + "\n", new UTF8Encoding(false));
             }
             catch { }
         }

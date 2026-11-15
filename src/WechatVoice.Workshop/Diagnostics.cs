@@ -10,9 +10,9 @@ namespace WechatVoice.Workshop
 {
     internal static class Diagnostics
     {
-        internal const string Version="1.0.0";
+        internal const string Version="1.1.1";
         private static readonly object Gate=new object();
-        private static readonly HashSet<string> Fields=new HashSet<string>(("utc request_id event physical_pages logical_pages declared_pages free_leaf_pages wal_committed_pages attempt inner_depth page_number sqlite_code sqlite_version media_sources schema_flags valid_media snapshot_stage bytes_current bytes_total speed_mb_s error_code selected_pid read_calls read_failures partial_reads last_read_error region_count action phase count total current success matched encrypted scanned_mb candidates config_names config_objects master_checks limit_reached completed failed processed cached recognized recognition_failed cancelled version databases expected_databases issue_count selected_count transcribe keep_silk has_chat has_dates elapsed_ms exception_type component errno winerror hresult stage database_kind module function line exit_code os_version clr_version process64 cpu_count engine_present asr_present model_present tokens_present ort_present dml_present capi_present").Split(' '));
+        private static readonly HashSet<string> Fields=new HashSet<string>(("favorites favorite_missing favorite_cache_present favorite_cache_scanned favorite_cache_hits favorite_server_hits favorite_ambiguous favorite_md5_rejected favorite_no_server favorite_cache_unreadable utc request_id event physical_pages logical_pages declared_pages free_leaf_pages wal_committed_pages attempt inner_depth page_number sqlite_code sqlite_version media_sources schema_flags valid_media snapshot_stage bytes_current bytes_total speed_mb_s error_code selected_pid read_calls read_failures partial_reads last_read_error region_count action phase count total current success matched encrypted scanned_mb candidates config_names config_objects master_checks limit_reached completed failed processed cached recognized recognition_failed cancelled version databases expected_databases issue_count selected_count transcribe keep_silk has_chat has_dates elapsed_ms exception_type component errno winerror hresult stage database_kind module function line exit_code os_version clr_version process64 cpu_count engine_present asr_present model_present tokens_present ort_present dml_present capi_present").Split(' '));
         internal static Dictionary<string,object> Clean(Dictionary<string,object> values)
         {
             var result=new Dictionary<string,object>();
@@ -63,7 +63,7 @@ namespace WechatVoice.Workshop
                         {
                             byte[] buffer=new byte[512*1024];int length=0,read;
                             while(length<buffer.Length && (read=stream.Read(buffer,length,buffer.Length-length))>0)length+=read;
-                            foreach(string line in Encoding.UTF8.GetString(buffer,0,length).Split('\n'))
+                            foreach(string line in Encoding.UTF8.GetString(buffer,0,length).TrimStart('\uFEFF').Split('\n'))
                             {
                                 if(line.Length>8192)continue;
                                 try{var record=new JavaScriptSerializer{MaxJsonLength=8192}.Deserialize<Dictionary<string,object>>(line);text.AppendLine(new JavaScriptSerializer().Serialize(Clean(record)));}catch{ }

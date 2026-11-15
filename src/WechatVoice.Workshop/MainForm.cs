@@ -21,6 +21,7 @@ namespace WechatVoice.Workshop
         private UiPreferences preferences=new UiPreferences();
         private SoundPlayer player;
         private bool advanced,selectingAccount;
+        private bool favoriteMode;
         private readonly List<ContactChoice> conversations=new List<ContactChoice>();
         private ContactChoice activeContact;
         public MainForm() { InitializeComponent(); }
@@ -222,6 +223,13 @@ namespace WechatVoice.Workshop
             if(closing || IsDisposed)return;
             InvalidateSession();
             session = WorkerClient.Get(result, "session"); page = 0;
+            favoriteMode = result.ContainsKey("favorites") && Convert.ToBoolean(result["favorites"]);
+            voiceSortTitles[0] = favoriteMode ? "收藏时间" : "发送时间";
+            voiceSortTitles[4] = favoriteMode ? "收藏标题" : "会话";
+            titleLabel.Text = favoriteMode ? "微信语音导出工坊 · 收藏语音" : "微信语音导出工坊";
+            exportAllButton.Text = favoriteMode ? "导出收藏…" : "会话导出…";
+            if (favoriteMode) contactKind.SelectedIndex = 0;
+            UpdateVoiceHeaders();
             try{Directory.CreateDirectory(workspace);File.WriteAllText(Path.Combine(workspace,"account-path.txt"),sourceText.Text,new System.Text.UTF8Encoding(false));}
             catch(Exception ex){Log("未能记住账号位置："+ex.Message);}
             Log("读取本地语音 " + WorkerClient.Get(result, "count") + " 条；数据库 " + WorkerClient.Get(result, "databases") + " / " + WorkerClient.Get(result, "expected_databases") + "。");
@@ -230,6 +238,16 @@ namespace WechatVoice.Workshop
             if(result.ContainsKey("key_report") && result["key_report"] is Dictionary<string,object>)
                 Log("本次连接微信版本："+WorkerClient.Get((Dictionary<string,object>)result["key_report"],"version"));
             await LoadPage(true);
+        }
+        private async void Favorites_Click(object sender, EventArgs e)
+        {
+            if (!SourceReady()) return;
+            if (!advanced || processBox.SelectedItem == null) RefreshProcess_Click(this, EventArgs.Empty);
+            var selected = processBox.SelectedItem as ProcessChoice;
+            StopAudio();
+            var request = new Dictionary<string,object> { ["action"] = selected == null ? "catalog" : "connect", ["source"] = sourceText.Text, ["consent"] = true, ["favorites"] = true };
+            if (selected != null) request["pid"] = selected.Id;
+            await AcceptCatalog(await RunAsync(request));
         }
         private Dictionary<string, object> Filter(string action)
         {
@@ -261,7 +279,7 @@ namespace WechatVoice.Workshop
             {
                 if (contacts)
                 {
-                    conversations.Clear();activeContact=new ContactChoice { User="",Label="全部会话",Text="全部会话" };
+                    conversations.Clear();activeContact=new ContactChoice { User="",Label=favoriteMode?"全部收藏":"全部会话",Text=favoriteMode?"全部收藏":"全部会话" };
                     foreach (Dictionary<string, object> c in WorkerClient.Array(result, "contacts"))
                         conversations.Add(new ContactChoice { User=WorkerClient.Get(c,"user"),Label=WorkerClient.Get(c,"label"),Count=Convert.ToInt64(c["count"]),Latest=c.ContainsKey("latest_stamp")?Convert.ToInt64(c["latest_stamp"]):0,Text=WorkerClient.Get(c,"label")+" ("+WorkerClient.Get(c,"count")+")" });
                     ApplyConversationView();
@@ -313,7 +331,7 @@ namespace WechatVoice.Workshop
             try
             {
                 contactList.Items.Clear();
-                if(query.Length==0 && kind<=0)contactList.Items.Add(new ContactChoice { User="",Label="全部会话",Text="全部会话" });
+                if(query.Length==0 && kind<=0)contactList.Items.Add(new ContactChoice { User="",Label=favoriteMode?"全部收藏":"全部会话",Text=favoriteMode?"全部收藏":"全部会话" });
                 foreach(var item in view)contactList.Items.Add(item);
                 if(activeContact!=null)
                     for(int i=0;i<contactList.Items.Count;i++)if(((ContactChoice)contactList.Items[i]).User==activeContact.User){contactList.SelectedIndex=i;break;}
@@ -386,7 +404,7 @@ namespace WechatVoice.Workshop
         {
             if (session == null || busy) return;
             var conversation=activeContact;
-            if(!selected && (conversation==null || conversation.User.Length==0)){MessageBox.Show(this,"请先在左侧选择一个具体会话，再进入导出页面。");return;}
+            if(!selected && !favoriteMode && (conversation==null || conversation.User.Length==0)){MessageBox.Show(this,"请先在左侧选择一个具体会话，再进入导出页面。");return;}
             var request = Filter("export");
             try{request["output"]=UiPreferences.ResolveOutput(outputText.Text);}
             catch(Exception ex){MessageBox.Show(this,ex.Message);return;}
@@ -395,7 +413,7 @@ namespace WechatVoice.Workshop
                 if (voiceList.SelectedItems.Count == 0) { MessageBox.Show(this, "请先选择语音（可按 Ctrl / Shift 多选）。"); return; }
                 request["ids"] = voiceList.SelectedItems.Cast<ListViewItem>().Select(i => (string)i.Tag).ToArray();
             }
-            using(var dialog=new ExportForm(selected?"选中的语音（"+voiceList.SelectedItems.Count+" 条）":conversation.Text,fromDate.Value,toDate.Value,dateBox.Checked,async options=>
+            using(var dialog=new ExportForm(selected?"选中的语音（"+voiceList.SelectedItems.Count+" 条）":(conversation==null?"全部收藏语音":conversation.Text),fromDate.Value,toDate.Value,dateBox.Checked,async options=>
             {
                 var query=new Dictionary<string,object>(request);query["action"]="count";query["workspace"]=workspace;query.Remove("after");query.Remove("before");
                 foreach(var pair in options)query[pair.Key]=pair.Value;
@@ -458,6 +476,7 @@ namespace WechatVoice.Workshop
             {
                 if(IsDisposed || closing || !busy || cancelling || revision!=operation)return;
                 string phase = WorkerClient.Get(value, "phase");
+                if (phase == "favorites") { statusLabel.Text = "整理收藏语音：匹配 " + WorkerClient.Get(value,"success") + " / " + WorkerClient.Get(value,"total"); return; }
                 if (phase == "keys") statusLabel.Text = "只读验证密钥：" + WorkerClient.Get(value, "matched") + " / " + WorkerClient.Get(value, "encrypted") + " · 已扫描 " + WorkerClient.Get(value, "scanned_mb") + " MB";
                 else if (phase == "snapshot") statusLabel.Text = "创建只读副本：" + WorkerClient.Get(value, "current") + " / " + WorkerClient.Get(value, "total");
                 else if (phase == "snapshot_detail")
@@ -501,7 +520,7 @@ namespace WechatVoice.Workshop
             sourcePanel.Enabled = !busy; filtersPanel.Enabled = !busy; contactList.Enabled = !busy; voiceList.Enabled = !busy;
             contactSearch.Enabled=contactKind.Enabled=contactSort.Enabled=clearContactSearch.Enabled=!busy;
             outputPanel.Enabled = !busy; prepareButton.Enabled = !busy; readButton.Enabled = !busy;
-            previewButton.Enabled = !busy && session != null && voiceList.SelectedItems.Count==1; exportAllButton.Enabled = !busy && session != null && total > 0 && activeContact!=null && activeContact.User.Length>0;
+            previewButton.Enabled = !busy && session != null && voiceList.SelectedItems.Count==1; exportAllButton.Enabled = !busy && session != null && total > 0 && (favoriteMode || activeContact!=null && activeContact.User.Length>0);
             exportSelectedButton.Enabled = !busy && session != null && voiceList.SelectedItems.Count>0; previousButton.Enabled = !busy && page > 0;
             nextButton.Enabled = !busy && (page + 1) * 50 < total; cancelButton.Enabled = busy && !cancelling;
             recognizePageButton.Enabled=!busy && session!=null && voiceList.Items.Count>0;

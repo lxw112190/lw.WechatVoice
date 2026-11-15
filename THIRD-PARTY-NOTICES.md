@@ -1,5 +1,7 @@
 # 第三方参考和运行依赖
 
+2026-11-15 对照 Moect 固定提交 `7498e9f21ab283edb55a5d6a2e17c7ad696cf168` 的 core/favorites.py（GPL-3.0），核对 fav_db_item、收藏缓存目录、语音块枚举和 VoiceInfo.svr_id 关联。收藏读取使用本项目自有 C# 快照、XML、SQLite、解码与导出代码，未复制/打包上游实现。详见 docs/favorites.md。
+
 本工具当前实现为独立 WinForms + C# 工作进程和 C/C++ 原生库；Python 保留作构建期参考和回退。参考的第三方项目没有被作为整套应用执行。
 
 2026-11-10 对照 Moect 固定提交 `88dffc7d0d06632f8061b0a19aa82b38337d7ee5`，与早期参考版本逐文件比较：wx4/key.py、wx4/decrypt.py、wx4/reader.py、core/service.py 内容相同。本次记录连接成功判定与校验策略差异，改进本工具的结构化错误诊断，没有复制新的上游实现或降低原有认证校验；不能据此声称本工具微信 4.2.x 实测兼容。

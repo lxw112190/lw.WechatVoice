@@ -83,7 +83,7 @@ internal static class FormsCheck
                         }
                         if(((ComboBox)field("processBox")).Visible || ((TextBox)field("logText")).Visible)throw new Exception("Advanced controls should be collapsed by default");
                         var layout=(TableLayoutPanel)field("root");if(layout.RowStyles[8].Height!=0)throw new Exception("Diagnostic row not collapsed");
-                        RequireUnclipped((Button)field("prepareButton"));RequireUnclipped((Button)field("advancedButton"));
+                        RequireUnclipped((Button)field("prepareButton"));RequireUnclipped((Button)field("advancedButton"));RequireUnclipped((Button)field("favoriteButton"));
                         RequireUnclipped((Button)field("diagnosticsButton"));
                         RequireUnclipped((Button)field("scanAccountButton"));RequireUnclipped((Button)field("browseSourceButton"));
                         string appRoot = Path.GetDirectoryName(Path.GetFullPath(args[0]));
@@ -167,7 +167,7 @@ internal static class FormsCheck
                         if(((ProgressBar)field("progressBar")).Value!=100 || !((Label)field("statusLabel")).Text.Contains("WAV成功 3"))throw new Exception("Final export summary/progress was overwritten");
                         if(!File.Exists(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(args[0])),"workspace","ui-preferences.json")))throw new Exception("UI preferences weren't saved");
                         form.Size = new Size(1000, 760); form.PerformLayout();
-                        RequireUnclipped((Button)field("prepareButton"));RequireUnclipped((Button)field("advancedButton"));RequireUnclipped((Button)field("exportAllButton"));
+                        RequireUnclipped((Button)field("prepareButton"));RequireUnclipped((Button)field("advancedButton"));RequireUnclipped((Button)field("exportAllButton"));RequireUnclipped((Button)field("favoriteButton"));
                         RequireUnclipped((TextBox)field("contactSearch"));RequireUnclipped((ComboBox)field("contactSort"));RequireUnclipped((ComboBox)field("contactKind"));
                         RequireUnclipped((Button)field("diagnosticsButton"));
                         using (var image = new Bitmap(form.Width, form.Height)) { form.DrawToBitmap(image, new Rectangle(Point.Empty, image.Size)); image.Save(Path.Combine(args[1], "runtime-minimum.png")); }

@@ -32,6 +32,12 @@ namespace VoiceEngine
         }
 
         internal static Tuple<string, List<string>> Databases(string folder)
+        { return DatabaseSet(folder, false); }
+
+        internal static Tuple<string, List<string>> DatabasesForFavorites(string folder)
+        { return DatabaseSet(folder, true); }
+
+        private static Tuple<string, List<string>> DatabaseSet(string folder, bool favorites)
         {
             string root = Path.GetFullPath(folder);
             if (Directory.Exists(Path.Combine(root, "db_storage")))
@@ -47,6 +53,7 @@ namespace VoiceEngine
                 string name = Path.GetFileName(path);
                 bool wanted = name.Equals("contact.db", StringComparison.OrdinalIgnoreCase) ||
                     Regex.IsMatch(name, @"^(?:media|message)_\d+\.db$", RegexOptions.IgnoreCase);
+                if (favorites && name.Equals("favorite.db", StringComparison.OrdinalIgnoreCase)) wanted = true;
                 if (!wanted) continue;
                 long size = new FileInfo(path).Length;
                 if (size <= 0 || size > 32L * 1024 * 1024 * 1024)
@@ -55,7 +62,9 @@ namespace VoiceEngine
                 if (files.Count > 512)
                     throw new InvalidDataException("数据库数量超过512个，请只选择一个账号");
             }
-            if (!files.Any(path => Path.GetFileName(path).StartsWith("media_", StringComparison.OrdinalIgnoreCase)))
+            if (favorites && !files.Any(path => Path.GetFileName(path).Equals("favorite.db", StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidDataException("没有找到收藏库；请在电脑微信打开收藏，再选择账号目录或 db_storage");
+            if (!favorites && !files.Any(path => Path.GetFileName(path).StartsWith("media_", StringComparison.OrdinalIgnoreCase)))
                 throw new InvalidDataException("没有找到media_*.db；请选择一个微信账号目录或db_storage目录");
             if (files.Sum(path => new FileInfo(path).Length) > 64L * 1024 * 1024 * 1024)
                 throw new InvalidDataException("所选数据库超过64GiB，首版暂不支持");
@@ -149,9 +158,15 @@ namespace VoiceEngine
         }
 
         internal static ScanResult Scan(int pid, string folder, Action check, Action<Dictionary<string, object>> progress)
+        { return ScanCore(pid, folder, check, progress, false); }
+
+        internal static ScanResult ScanFavorites(int pid, string folder, Action check, Action<Dictionary<string, object>> progress)
+        { return ScanCore(pid, folder, check, progress, true); }
+
+        private static ScanResult ScanCore(int pid, string folder, Action check, Action<Dictionary<string, object>> progress, bool favorites)
         {
             var details = ProcessDetails(pid);
-            var databases = Databases(folder);
+            var databases = favorites ? DatabasesForFavorites(folder) : Databases(folder);
             string root = databases.Item1;
             var files = databases.Item2;
             var wanted = new Dictionary<string, List<string>>();

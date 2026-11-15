@@ -18,6 +18,7 @@ test-results/
 *.silk
 *.wav
 *.pcm
+*.log
 *.db-wal
 *.db-shm
 *.sqlite-wal

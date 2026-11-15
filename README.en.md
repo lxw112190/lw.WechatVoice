@@ -6,13 +6,15 @@
 
 C# / .NET Framework 4.8, native SILK decoding, and optional offline SenseVoice transcription. Browse conversations, filter dates, preview audio and export batches with searchable filenames and CSV manifests. No Python, GPU or cloud API is required to run the packaged application.
 
-Current stable release: **1.0.0**. Windows 10/11 x64. WeChat 4.x processes may be attempted after explicit user consent, but this is **not a claim of universal 4.x compatibility**. The current C# engine and snapshot changes have passed CI synthetic regression coverage; current real-account verification remains pending.
+Source preparation version: **1.1.1**, adding favorite voice export. Published stable release: **1.0.0**. Windows 10/11 x64. WeChat 4.x processes may be attempted after explicit user consent, but this is **not a claim of universal 4.x compatibility**. Current real-account verification remains pending.
 
 ![Workshop with synthetic test data](docs/images/workshop-synthetic.png)
 
 The screenshot contains synthetic conversations and test audio only.
 
 ## Usage
+
+The new **收藏语音** entry reads standalone and nested favorite voices into a separate snapshot session. Existing date filters, preview, WAV export and offline naming remain available. Only content-matched local files or unambiguous original-message audio are used; missing audio is reported. Conversion currently supports SILK, with originals retained on unsupported formats. See [favorites documentation](docs/favorites.md).
 
 1. Extract the entire Windows deployment ZIP into a writable directory.
 2. Launch `WechatVoice.Workshop.exe`; .NET Framework 4.8 is required.

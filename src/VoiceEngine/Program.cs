@@ -60,6 +60,7 @@ namespace VoiceEngine
                     ["has_chat"] = payload.ContainsKey("chat") && payload["chat"] != null,
                     ["has_dates"] = payload.ContainsKey("after") || payload.ContainsKey("before"),
                     ["transcribe"] = payload.ContainsKey("transcribe") && Convert.ToBoolean(payload["transcribe"]),
+                    ["favorites"] = payload.ContainsKey("favorites") && Convert.ToBoolean(payload["favorites"]),
                     ["keep_silk"] = !payload.ContainsKey("keep_silk") || Convert.ToBoolean(payload["keep_silk"]) };
                 WorkerDiagnostics.Event("begin", begin);
                 progress = value => { if (value.ContainsKey("phase")) WorkerDiagnostics.Phase(value); Emit(new Dictionary<string, object>(value) { ["type"] = "progress" }); };
@@ -117,7 +118,7 @@ namespace VoiceEngine
             if (action == "catalog") return Catalog(request, workspace, check, connectionReport, serializer);
             if (action == "self-test")
                 return new Dictionary<string, object> {
-                    ["worker"] = "1.0.0", ["codec"] = "0.2.8-sdk-507be6bc",
+                    ["worker"] = "1.1.1", ["codec"] = "0.2.8-sdk-507be6bc",
                     ["target_wechat"] = Capture.TargetVersion, ["verified_wechat_version"] = Capture.VerifiedVersion,
                     ["native_tests"] = false };
             var paths = Export.SessionPaths(workspace, request.ContainsKey("session") ? request["session"] : null);
@@ -133,11 +134,12 @@ namespace VoiceEngine
         {
             if (!request.ContainsKey("consent") || !Convert.ToBoolean(request["consent"]))
                 throw new InvalidDataException("请先确认本人或已获授权账号");
-            var databases = Capture.Databases(Convert.ToString(request["source"]));
+            bool favorites = request.ContainsKey("favorites") && Convert.ToBoolean(request["favorites"]);
+            var databases = favorites ? Capture.DatabasesForFavorites(Convert.ToString(request["source"])) : Capture.Databases(Convert.ToString(request["source"]));
             string root = databases.Item1;
             Export.EnsureOutside(workspace, root);
             var scanStarted = DateTime.UtcNow;
-            var scan = Capture.Scan(Convert.ToInt32(request["pid"]), root, check, progress);
+            var scan = favorites ? Capture.ScanFavorites(Convert.ToInt32(request["pid"]), root, check, progress) : Capture.Scan(Convert.ToInt32(request["pid"]), root, check, progress);
             var report = scan.Report;
             WorkerDiagnostics.Event("key_scan_result", new Dictionary<string, object> {
                 ["selected_pid"] = Convert.ToInt32(request["pid"]),
@@ -180,7 +182,8 @@ namespace VoiceEngine
         {
             if (!request.ContainsKey("consent") || !Convert.ToBoolean(request["consent"]))
                 throw new InvalidDataException("请先确认本人或已获授权账号");
-            var databases = Capture.Databases(Convert.ToString(request["source"]));
+            bool favorites = request.ContainsKey("favorites") && Convert.ToBoolean(request["favorites"]);
+            var databases = favorites ? Capture.DatabasesForFavorites(Convert.ToString(request["source"])) : Capture.Databases(Convert.ToString(request["source"]));
             string root = databases.Item1;
             var files = databases.Item2;
             Export.EnsureOutside(workspace, root);
@@ -222,10 +225,10 @@ namespace VoiceEngine
                 progress(new Dictionary<string, object> { ["phase"] = "snapshot", ["current"] = position + 1, ["total"] = files.Count, ["success"] = success });
             }
             Dictionary<string, object> report;
-            if (mediaSuccess == 0)
+            if (!favorites && mediaSuccess == 0)
                 throw EngineErrors.Create("MEDIA_SNAPSHOT_MISSING", "语音库副本创建失败，尚未读取 VoiceInfo；不能将其判定为表结构不支持。" +
                     (mediaFailure == null ? "请导出诊断包检查。" : "\r\n语音库原因：" + mediaFailure.Message + "\r\n诊断代码：" + EngineErrors.Code(mediaFailure)), mediaFailure);
-            try { report = Library.Build(snapshots, index, check, progress); }
+            try { report = favorites ? Favorites.Build(snapshots, index, root, check, progress) : Library.Build(snapshots, index, check, progress); }
             catch (InvalidDataException exc)
             {
                 if (issues.Count > 0) throw new InvalidDataException(exc.Message + "；副本详情：" + string.Join("；", issues.Take(8)), exc);

@@ -346,6 +346,15 @@ namespace VoiceEngine
             string path = Path.GetFullPath(Path.Combine(root, Convert.ToString(row["db"])));
             if (!path.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) && path != root)
                 throw new InvalidDataException("快照路径越界");
+            if (Convert.ToString(row["db"]).StartsWith("favorite-audio/", StringComparison.Ordinal))
+            {
+                var file = new FileInfo(path);
+                if (!file.Exists) throw EngineErrors.Create("FAVORITE_AUDIO_MISSING", "收藏语音原件缺失；请在电脑微信打开并播放这条收藏，下载完成后重新点击“收藏语音”");
+                if (file.Length <= 0 || file.Length > MaxBlob) throw EngineErrors.Create("FAVORITE_AUDIO_SIZE", "收藏语音副本为空或超过8MiB上限；请重新读取收藏");
+                byte[] data = File.ReadAllBytes(path);
+                if (Path.GetFileNameWithoutExtension(path) != Sha256Bytes(data)) throw EngineErrors.Create("FAVORITE_AUDIO_CHANGED", "收藏语音副本校验失败；请重新读取收藏");
+                return data;
+            }
             using (var db = SqliteConnection.OpenReadOnly(path))
             using (var statement = db.Prepare("SELECT length(voice_data) FROM VoiceInfo WHERE rowid=?"))
             {

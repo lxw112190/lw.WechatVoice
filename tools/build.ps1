@@ -100,6 +100,10 @@ try {
     if($LASTEXITCODE -ne 0){throw 'Export comparison harness compilation failed.'}
     & ./build/ExportCheck.exe (Join-Path $projectRoot 'src/VoiceEngine/bin/Release/VoiceEngine.exe') (Join-Path $projectRoot 'test-results/export-fixtures')
     if($LASTEXITCODE -ne 0){throw 'C#/Python export comparison failed.'}
+    & $compiler /nologo /langversion:7.3 /platform:x64 /target:exe /reference:System.dll /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll /out:build/FavoritesUiCheck.exe tests/FavoritesUiCheck.cs
+    if($LASTEXITCODE -ne 0){throw 'Favorites UI harness compilation failed.'}
+    & $Python tests/favorites_check.py (Join-Path $projectRoot 'src/VoiceEngine/bin/Release/VoiceEngine.exe')
+    if($LASTEXITCODE -ne 0){throw 'Favorites voice regression failed.'}
     Write-Output 'Build and synthetic checks passed. See docs for the separately recorded real-account validation scope.'
 } finally {
     foreach($stage in $asrStages){

@@ -3,6 +3,7 @@ namespace WechatVoice.Workshop
     partial class MainForm
     {
         private System.ComponentModel.IContainer components = null;
+        private System.Windows.Forms.Button favoriteButton;
         protected override void Dispose(bool disposing) { if (disposing && components != null) components.Dispose(); base.Dispose(disposing); }
         private System.Windows.Forms.TableLayoutPanel root, sourcePanel, outputPanel;
         private System.Windows.Forms.FlowLayoutPanel filtersPanel, pager, actions, sourceActions, processPanel, sourceBrowsePanel;
@@ -135,6 +136,7 @@ namespace WechatVoice.Workshop
             this.advancedButton.Text = "高级 / 诊断"; this.advancedButton.Size = new System.Drawing.Size(110,34); this.advancedButton.Click += new System.EventHandler(this.Advanced_Click); this.sourceActions.Controls.Add(this.prepareButton); this.sourceActions.Controls.Add(this.advancedButton); this.sourceActions.Controls.Add(this.readButton);
             this.diagnosticsButton=new System.Windows.Forms.Button();this.diagnosticsButton.Text="导出诊断包";this.diagnosticsButton.Size=new System.Drawing.Size(130,34);this.diagnosticsButton.Click+=new System.EventHandler(this.ExportDiagnostics_Click);
             this.sourcePanel.Controls.Add(this.sourceActions, 0, 3); this.sourcePanel.SetColumnSpan(this.sourceActions, 3);
+            this.favoriteButton = new System.Windows.Forms.Button(); this.favoriteButton.Text = "收藏语音"; this.favoriteButton.Size = new System.Drawing.Size(110,34); this.favoriteButton.Click += new System.EventHandler(this.Favorites_Click); this.sourceActions.Controls.Add(this.favoriteButton);
             this.root.Controls.Add(this.sourcePanel, 0, 1);
             this.filtersPanel.Dock = System.Windows.Forms.DockStyle.Fill; this.filtersPanel.WrapContents = false;
             this.dateBox.Text = "按日期筛选"; this.dateBox.AutoSize = true; this.dateBox.Margin = new System.Windows.Forms.Padding(3, 8, 8, 3);
