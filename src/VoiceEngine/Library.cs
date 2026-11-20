@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using WechatVoice;
 
 namespace VoiceEngine
 {
@@ -52,8 +53,8 @@ namespace VoiceEngine
 
         internal static Dictionary<string, object> Build(string folder, string indexPath, Action check, Action<Dictionary<string, object>> progress)
         {
-            string root = Path.GetFullPath(folder);
-            if (File.Exists(indexPath))
+            string root = FileSystemPath.FullPath(folder);
+            if (File.Exists(FileSystemPath.ForIo(indexPath)))
                 throw new InvalidDataException("索引已存在，请新建读取会话");
             using (var db = SqliteConnection.OpenReadWrite(indexPath))
             {
@@ -273,13 +274,13 @@ namespace VoiceEngine
                     if (!fields.ContainsKey(column)) throw new InvalidDataException("语音排序条件无效");
                     string join = "";
                     string cachePath = SpeechCache.Path(indexPath);
-                    if ((column == "transcript" || column == "recognition_status") && File.Exists(cachePath))
+                    if ((column == "transcript" || column == "recognition_status") && File.Exists(FileSystemPath.ForIo(cachePath)))
                     {
                         try
                         {
                             using (var attach = db.Prepare("ATTACH DATABASE ? AS speech"))
                             {
-                                attach.Bind(1, SqliteConnection.FileUri(cachePath) + "?mode=ro");
+                                attach.Bind(1, SqliteConnection.FileUri(cachePath, "mode=ro"));
                                 attach.Step();
                             }
                             using (var probe = db.Prepare("SELECT id FROM speech.transcripts LIMIT 0")) probe.Step();
@@ -342,16 +343,16 @@ namespace VoiceEngine
 
         internal static byte[] Payload(string folder, Dictionary<string, object> row)
         {
-            string root = Path.GetFullPath(folder);
-            string path = Path.GetFullPath(Path.Combine(root, Convert.ToString(row["db"])));
+            string root = FileSystemPath.FullPath(folder);
+            string path = FileSystemPath.FullPath(Path.Combine(root, Convert.ToString(row["db"])));
             if (!path.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) && path != root)
                 throw new InvalidDataException("快照路径越界");
             if (Convert.ToString(row["db"]).StartsWith("favorite-audio/", StringComparison.Ordinal))
             {
-                var file = new FileInfo(path);
+                var file = new FileInfo(FileSystemPath.ForIo(path));
                 if (!file.Exists) throw EngineErrors.Create("FAVORITE_AUDIO_MISSING", "收藏语音原件缺失；请在电脑微信打开并播放这条收藏，下载完成后重新点击“收藏语音”");
                 if (file.Length <= 0 || file.Length > MaxBlob) throw EngineErrors.Create("FAVORITE_AUDIO_SIZE", "收藏语音副本为空或超过8MiB上限；请重新读取收藏");
-                byte[] data = File.ReadAllBytes(path);
+                byte[] data = File.ReadAllBytes(FileSystemPath.ForIo(path));
                 if (Path.GetFileNameWithoutExtension(path) != Sha256Bytes(data)) throw EngineErrors.Create("FAVORITE_AUDIO_CHANGED", "收藏语音副本校验失败；请重新读取收藏");
                 return data;
             }
@@ -411,7 +412,7 @@ namespace VoiceEngine
         private static List<string> FindFiles(string root, string pattern)
         {
             var found = new List<string>();
-            foreach (string path in Directory.GetFiles(root, pattern, SearchOption.AllDirectories)) found.Add(Path.GetFullPath(path));
+            foreach (string path in FileSystemPath.GetFiles(root, pattern, SearchOption.AllDirectories)) found.Add(FileSystemPath.FullPath(path));
             found.Sort(StringComparer.OrdinalIgnoreCase);
             return found;
         }

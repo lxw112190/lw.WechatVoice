@@ -5,6 +5,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Web.Script.Serialization;
+using WechatVoice;
 
 namespace VoiceEngine
 {
@@ -98,9 +99,9 @@ namespace VoiceEngine
 
         internal static double Decode(string sourcePath, string targetPath)
         {
-            var source = new FileInfo(sourcePath);
+            var source = new FileInfo(FileSystemPath.ForIo(sourcePath));
             if (source.Length <= 0 || source.Length > 8L * 1024 * 1024) throw new InvalidDataException("语音大小无效");
-            byte[] raw = File.ReadAllBytes(sourcePath);
+            byte[] raw = File.ReadAllBytes(FileSystemPath.ForIo(sourcePath));
             if (!(StartsWith(raw, TencentMagic) || StartsWith(raw, SilkMagic)))
                 throw new InvalidDataException("不是支持的SILK v3语音，已保留原始文件");
             byte[] framed = PacketStream(raw).Item1;
@@ -113,7 +114,7 @@ namespace VoiceEngine
             try
             {
                 WriteWav(temporary, samples);
-                using (var check = new FileStream(temporary, FileMode.Open, FileAccess.Read, FileShare.Read))
+                using (var check = new FileStream(FileSystemPath.ForIo(temporary), FileMode.Open, FileAccess.Read, FileShare.Read))
                 {
                     byte[] header = new byte[44];
                     ReadFully(check, header);
@@ -122,11 +123,11 @@ namespace VoiceEngine
                         BitConverter.ToInt32(header, 40) != samples.Length)
                         throw new InvalidDataException("WAV回读验证失败");
                 }
-                if (File.Exists(targetPath)) throw new InvalidDataException("已有WAV不覆盖");
-                File.Move(temporary, targetPath);
+                if (File.Exists(FileSystemPath.ForIo(targetPath))) throw new InvalidDataException("已有WAV不覆盖");
+                File.Move(FileSystemPath.ForIo(temporary), FileSystemPath.ForIo(targetPath));
                 return samples.Length / (double)(Rate * 2);
             }
-            finally { if (File.Exists(temporary)) try { File.Delete(temporary); } catch { } }
+            finally { if (File.Exists(FileSystemPath.ForIo(temporary))) try { File.Delete(FileSystemPath.ForIo(temporary)); } catch { } }
         }
 
         private static void DecodeToPcm(byte[] framed, BoundedBuffer output)
@@ -159,7 +160,7 @@ namespace VoiceEngine
 
         private static void WriteWav(string path, byte[] pcm)
         {
-            using (var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            using (var stream = new FileStream(FileSystemPath.ForIo(path), FileMode.CreateNew, FileAccess.Write, FileShare.None))
             {
                 var header = new byte[44];
                 Encoding.ASCII.GetBytes("RIFF", 0, 4, header, 0);

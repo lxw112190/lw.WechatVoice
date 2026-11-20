@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Xml;
 using System.Xml.Linq;
+using WechatVoice;
 
 namespace VoiceEngine
 {
@@ -57,22 +58,22 @@ namespace VoiceEngine
         }
         private static bool Linked(string path)
         {
-            for (string p = Path.GetFullPath(path); p != null; p = Path.GetDirectoryName(p))
-                if ((File.GetAttributes(p) & FileAttributes.ReparsePoint) != 0) return true;
+            for (string p = FileSystemPath.FullPath(path); p != null; p = Path.GetDirectoryName(p))
+                if ((File.GetAttributes(FileSystemPath.ForIo(p)) & FileAttributes.ReparsePoint) != 0) return true;
             return false;
         }
         private static IEnumerable<string> CacheFiles(string root, Action check)
         {
-            if (!Directory.Exists(root) || Linked(root)) yield break;
+            if (!Directory.Exists(FileSystemPath.ForIo(root)) || Linked(root)) yield break;
             var pending = new Stack<string>(); pending.Push(root);
             int count = 0;
             while (pending.Count != 0)
             {
                 check(); string directory = pending.Pop();
-                foreach (string path in Directory.EnumerateFileSystemEntries(directory))
+                foreach (string path in FileSystemPath.EnumerateFileSystemEntries(directory))
                 {
                     check(); if (++count > 100000) throw new InvalidDataException("收藏缓存超过10万项，请缩小本地缓存后重试");
-                    var attributes = File.GetAttributes(path);
+                    var attributes = File.GetAttributes(FileSystemPath.ForIo(path));
                     if ((attributes & FileAttributes.ReparsePoint) != 0) continue;
                     if ((attributes & FileAttributes.Directory) != 0) pending.Push(path); else yield return path;
                 }
@@ -82,12 +83,12 @@ namespace VoiceEngine
         {
             string hash = Library.Sha256Bytes(data), relative = "favorite-audio/" + hash + ".silk";
             string target = Path.Combine(snapshots, relative);
-            Directory.CreateDirectory(Path.GetDirectoryName(target));
-            if (!File.Exists(target))
+            Directory.CreateDirectory(FileSystemPath.ForIo(Path.GetDirectoryName(target)));
+            if (!File.Exists(FileSystemPath.ForIo(target)))
             {
                 string part=target+".part";
-                try { using (var file = new FileStream(part, FileMode.CreateNew, FileAccess.Write, FileShare.None)) file.Write(data, 0, data.Length); File.Move(part,target); }
-                finally { if(File.Exists(part)) File.Delete(part); }
+                try { using (var file = new FileStream(FileSystemPath.ForIo(part), FileMode.CreateNew, FileAccess.Write, FileShare.None)) file.Write(data, 0, data.Length); File.Move(FileSystemPath.ForIo(part), FileSystemPath.ForIo(target)); }
+                finally { if(File.Exists(FileSystemPath.ForIo(part))) File.Delete(FileSystemPath.ForIo(part)); }
             }
             return relative;
         }
@@ -95,7 +96,7 @@ namespace VoiceEngine
         {
             var voices = new List<Voice>(); var issues = new List<string>();
             string favorite = Path.Combine(snapshots, "favorite", "favorite.db");
-            if (!File.Exists(favorite)) throw new InvalidDataException("收藏库副本缺失或认证失败；请先在微信打开收藏后重新连接");
+            if (!File.Exists(FileSystemPath.ForIo(favorite))) throw new InvalidDataException("收藏库副本缺失或认证失败；请先在微信打开收藏后重新连接");
             using (var source = SqliteConnection.OpenReadOnly(favorite))
             {
                 var columns = Library.Columns(source, "fav_db_item");
@@ -133,18 +134,18 @@ namespace VoiceEngine
             string account = Path.GetFileName(sourceRoot).Equals("db_storage",StringComparison.OrdinalIgnoreCase) ? Path.GetDirectoryName(sourceRoot) : sourceRoot;
             long scanned = 0;
             int cacheScanned=0,cacheUnreadable=0,cacheHits=0,serverHits=0,ambiguous=0,md5Rejected=0,noServer=0;
-            bool cachePresent=Directory.Exists(Path.Combine(account,"business","favorite","data")) || Directory.Exists(Path.Combine(account,"business","favorite","temp"));
+            bool cachePresent=Directory.Exists(FileSystemPath.ForIo(Path.Combine(account,"business","favorite","data"))) || Directory.Exists(FileSystemPath.ForIo(Path.Combine(account,"business","favorite","temp")));
             foreach (string bucket in new[] { "data", "temp" })
                 foreach (string path in CacheFiles(Path.Combine(account,"business","favorite",bucket),check))
                 {
                     if (found.Count == needed.Count) break;
-                    check(); cacheScanned++; var file = new FileInfo(path); if (file.Length <= 0 || file.Length > MaxAudio) continue;
+                    check(); cacheScanned++; var file = new FileInfo(FileSystemPath.ForIo(path)); if (file.Length <= 0 || file.Length > MaxAudio) continue;
                     scanned += file.Length; if (scanned > 4L * 1024 * 1024 * 1024) throw new InvalidDataException("收藏缓存扫描超过4GiB，请清理无关缓存后重试");
                     try
                     {
                         byte[] data;
                         if (Linked(path)) continue;
-                        using (var stream = new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read))
+                        using (var stream = new FileStream(FileSystemPath.ForIo(path),FileMode.Open,FileAccess.Read,FileShare.Read))
                         {
                             if (stream.Length > MaxAudio) continue;
                             using (var copy = new MemoryStream()) { var block = new byte[65536]; int n; while ((n=stream.Read(block,0,block.Length))>0) { check(); copy.Write(block,0,n); } data=copy.ToArray(); }
@@ -165,7 +166,7 @@ namespace VoiceEngine
                     if (ulong.TryParse(voice.Server,out server) && server > 0)
                     {
                         var matches = new Dictionary<string,byte[]>();
-                        foreach (string media in Directory.Exists(Path.Combine(snapshots,"message")) ? Directory.GetFiles(Path.Combine(snapshots,"message"),"media_*.db") : new string[0])
+                        foreach (string media in Directory.Exists(FileSystemPath.ForIo(Path.Combine(snapshots,"message"))) ? FileSystemPath.GetFiles(Path.Combine(snapshots,"message"),"media_*.db") : new string[0])
                             using (var db=SqliteConnection.OpenReadOnly(media))
                             {
                                 var columns=Library.Columns(db,"VoiceInfo"); if (!columns.ContainsKey("svr_id") || !columns.ContainsKey("voice_data")) continue;

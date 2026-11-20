@@ -41,7 +41,7 @@ namespace WechatVoice.Workshop
                         if (!string.IsNullOrWhiteSpace(value))
                         {
                             string expanded = Environment.ExpandEnvironmentVariables(value).Trim();
-                            if (Directory.Exists(expanded)) return Path.GetFullPath(expanded);
+                            if (Directory.Exists(FileSystemPath.ForIo(expanded))) return FileSystemPath.FullPath(expanded);
                         }
                     }
                 }
@@ -59,20 +59,20 @@ namespace WechatVoice.Workshop
             {
                 if (string.IsNullOrWhiteSpace(path)) return;
                 path = Environment.ExpandEnvironmentVariables(path).Trim();
-                if (!Directory.Exists(path)) return;
-                path = Path.GetFullPath(path);
+                if (!Directory.Exists(FileSystemPath.ForIo(path))) return;
+                path = FileSystemPath.FullPath(path);
                 if (seen.Add(path)) roots.Add(path);
             };
             // %APPDATA%\Tencent\xwechat\config\*.ini — "MyDocument:" or an absolute path
             string configDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Tencent", "xwechat", "config");
-            if (Directory.Exists(configDir))
+            if (Directory.Exists(FileSystemPath.ForIo(configDir)))
                 foreach (string ini in SafeFiles(configDir, "*.ini"))
                 {
                     string raw = null;
                     try
                     {
                         var buffer = new byte[1024];
-                        using (var stream = new FileStream(ini, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                        using (var stream = new FileStream(FileSystemPath.ForIo(ini), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
                         {
                             int read = stream.Read(buffer, 0, buffer.Length);
                             raw = Encoding.UTF8.GetString(buffer, 0, read);
@@ -95,7 +95,7 @@ namespace WechatVoice.Workshop
                     Path.Combine(drive, "Users"), Path.Combine(drive, "Documents"),
                     Path.Combine(drive, "WeChat"), Path.Combine(drive, "Tencent"), Path.Combine(drive, "ProgramData") })
                 {
-                    if (!Directory.Exists(baseDir)) continue;
+                    if (!Directory.Exists(FileSystemPath.ForIo(baseDir))) continue;
                     add(Path.Combine(baseDir, "xwechat_files"));
                     foreach (string child in SafeDirectories(baseDir)) add(Path.Combine(child, "xwechat_files"));
                 }
@@ -110,8 +110,8 @@ namespace WechatVoice.Workshop
             {
                 string root = Path.GetFileName(baseDir).Equals("xwechat_files", StringComparison.OrdinalIgnoreCase)
                     ? baseDir : Path.Combine(baseDir, "xwechat_files");
-                if (!Directory.Exists(root)) continue;
-                root = Path.GetFullPath(root);
+                if (!Directory.Exists(FileSystemPath.ForIo(root))) continue;
+                root = FileSystemPath.FullPath(root);
                 if (seen.Add(root)) roots.Add(root);
             }
             return roots;
@@ -126,13 +126,13 @@ namespace WechatVoice.Workshop
             if (roots == null) return accounts;
             foreach (string root in roots)
             {
-                if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root)) continue;
+                if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(FileSystemPath.ForIo(root))) continue;
                 foreach (string dir in SafeDirectories(root))
                 {
                     string name = Path.GetFileName(dir);
                     if (name.Equals("all_users", StringComparison.OrdinalIgnoreCase)) continue;
-                    if (!Directory.Exists(Path.Combine(dir, "db_storage"))) continue;
-                    string full = Path.GetFullPath(dir);
+                    if (!Directory.Exists(FileSystemPath.ForIo(Path.Combine(dir, "db_storage")))) continue;
+                    string full = FileSystemPath.FullPath(dir);
                     if (!seen.Add(full)) continue;
                     accounts.Add(new AccountInfo { Path = full, DirName = name, Wxid = SplitWxid(name), Recent = RecentFileTime(Path.Combine(dir, "db_storage")) });
                 }
@@ -148,13 +148,13 @@ namespace WechatVoice.Workshop
         /// <summary>Account folder or its db_storage, for a preferred path the scan may not have covered.</summary>
         internal static AccountInfo FromPath(string path)
         {
-            if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path)) return null;
-            string full = Path.GetFullPath(path.Trim());
+            if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(FileSystemPath.ForIo(path))) return null;
+            string full = FileSystemPath.FullPath(path.Trim());
             string root = Path.GetFileName(full).Equals("db_storage", StringComparison.OrdinalIgnoreCase)
                 ? Path.GetDirectoryName(full) : full;
-            if (root == null || !Directory.Exists(Path.Combine(root, "db_storage"))) return null;
+            if (root == null || !Directory.Exists(FileSystemPath.ForIo(Path.Combine(root, "db_storage")))) return null;
             string name = Path.GetFileName(root);
-            return new AccountInfo { Path = Path.GetFullPath(root), DirName = name, Wxid = SplitWxid(name), Recent = RecentFileTime(Path.Combine(root, "db_storage")) };
+            return new AccountInfo { Path = FileSystemPath.FullPath(root), DirName = name, Wxid = SplitWxid(name), Recent = RecentFileTime(Path.Combine(root, "db_storage")) };
         }
 
         internal static string SplitWxid(string dirName)
@@ -168,7 +168,7 @@ namespace WechatVoice.Workshop
             if (string.IsNullOrWhiteSpace(value)) return null;
             value = Environment.ExpandEnvironmentVariables(value).Trim();
             if (value.TrimEnd('\\', '/').Equals("MyDocument:", StringComparison.OrdinalIgnoreCase)) return DocumentsDirectory();
-            return Directory.Exists(value) ? value : null;
+            return Directory.Exists(FileSystemPath.ForIo(value)) ? value : null;
         }
 
         private static DateTime RecentFileTime(string storage)
@@ -177,10 +177,10 @@ namespace WechatVoice.Workshop
             int visited = 0;
             try
             {
-                foreach (string file in Directory.EnumerateFiles(storage, "*", SearchOption.AllDirectories))
+                foreach (string file in FileSystemPath.EnumerateFiles(storage, "*", SearchOption.AllDirectories))
                 {
                     if (++visited > MtimeFileCap) break;
-                    try { DateTime stamp = File.GetLastWriteTime(file); if (stamp > latest) latest = stamp; } catch { }
+                    try { DateTime stamp = File.GetLastWriteTime(FileSystemPath.ForIo(file)); if (stamp > latest) latest = stamp; } catch { }
                 }
             }
             catch { }
@@ -200,7 +200,7 @@ namespace WechatVoice.Workshop
         internal static List<string> SafeDirectories(string path)
         {
             var found = new List<string>();
-            try { foreach (string dir in Directory.EnumerateDirectories(path)) found.Add(dir); }
+            try { foreach (string dir in FileSystemPath.EnumerateDirectories(path)) found.Add(dir); }
             catch { }
             return found;
         }
@@ -208,7 +208,7 @@ namespace WechatVoice.Workshop
         private static List<string> SafeFiles(string path, string pattern)
         {
             var found = new List<string>();
-            try { foreach (string file in Directory.EnumerateFiles(path, pattern)) found.Add(file); }
+            try { foreach (string file in FileSystemPath.EnumerateFiles(path, pattern)) found.Add(file); }
             catch { }
             return found;
         }

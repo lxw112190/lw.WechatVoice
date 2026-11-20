@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web.Script.Serialization;
+using WechatVoice;
 
 namespace VoiceEngine
 {
@@ -47,11 +48,11 @@ namespace VoiceEngine
                 string input = Console.In.ReadLine();
                 if (input.Length > 262144) throw new InvalidDataException("请求超过256KiB");
                 var payload = serializer.Deserialize<Dictionary<string, object>>(input);
-                string workspace = Path.GetFullPath(payload.ContainsKey("workspace") && payload["workspace"] != null
+                string workspace = FileSystemPath.FullPath(payload.ContainsKey("workspace") && payload["workspace"] != null
                     ? Convert.ToString(payload["workspace"]) : Path.Combine(baseDir, "workspace"));
-                Directory.CreateDirectory(workspace);
-                cancelPath = payload.ContainsKey("cancel") && payload["cancel"] != null ? Path.GetFullPath(Convert.ToString(payload["cancel"])) : null;
-                if (cancelPath != null && !cancelPath.StartsWith(Path.GetFullPath(workspace) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                Directory.CreateDirectory(FileSystemPath.ForIo(workspace));
+                cancelPath = payload.ContainsKey("cancel") && payload["cancel"] != null ? FileSystemPath.FullPath(Convert.ToString(payload["cancel"])) : null;
+                if (cancelPath != null && !cancelPath.StartsWith(FileSystemPath.FullPath(workspace) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
                     throw new InvalidDataException("取消标记必须位于工作目录内");
                 if (payload.ContainsKey("request_id")) WorkerDiagnostics.Start(workspace, Convert.ToString(payload["request_id"]));
                 var begin = new Dictionary<string, object> {
@@ -103,7 +104,7 @@ namespace VoiceEngine
         {
             Action check = () =>
             {
-                if (cancelPath != null && File.Exists(cancelPath)) throw new Export.CancelledException();
+                if (cancelPath != null && File.Exists(FileSystemPath.ForIo(cancelPath))) throw new Export.CancelledException();
             };
             string action = request.ContainsKey("action") ? Convert.ToString(request["action"]) : "";
             Dictionary<string, object> connectionReport = null;
@@ -118,7 +119,7 @@ namespace VoiceEngine
             if (action == "catalog") return Catalog(request, workspace, check, connectionReport, serializer);
             if (action == "self-test")
                 return new Dictionary<string, object> {
-                    ["worker"] = "1.1.1", ["codec"] = "0.2.8-sdk-507be6bc",
+                    ["worker"] = "1.1.2", ["codec"] = "0.2.8-sdk-507be6bc",
                     ["target_wechat"] = Capture.TargetVersion, ["verified_wechat_version"] = Capture.VerifiedVersion,
                     ["native_tests"] = false };
             var paths = Export.SessionPaths(workspace, request.ContainsKey("session") ? request["session"] : null);
@@ -166,9 +167,9 @@ namespace VoiceEngine
             var valid = new Dictionary<string, string>();
             foreach (var entry in previous)
             {
-                string path = Path.GetFullPath(Path.Combine(root, entry.Key));
-                if (path.StartsWith(Path.GetFullPath(root) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
-                    File.Exists(path) && CryptoDb.FirstPageKey(path, FromHex(entry.Value), false) != null)
+                string path = FileSystemPath.FullPath(Path.Combine(root, entry.Key));
+                if (path.StartsWith(FileSystemPath.FullPath(root) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
+                    File.Exists(FileSystemPath.ForIo(path)) && CryptoDb.FirstPageKey(path, FromHex(entry.Value), false) != null)
                     valid[entry.Key] = entry.Value;
             }
             foreach (var entry in scan.Found) valid[entry.Key] = entry.Value;
@@ -192,7 +193,7 @@ namespace VoiceEngine
             string session = Guid.NewGuid().ToString("N");
             var paths = Export.SessionPaths(workspace, session);
             string folder = paths.Item1, snapshots = paths.Item2, index = paths.Item3;
-            Directory.CreateDirectory(folder);
+            Directory.CreateDirectory(FileSystemPath.ForIo(folder));
             var issues = new List<string>();
             WorkerDiagnostics.Event("sqlite_environment", new Dictionary<string, object> { ["sqlite_version"] = SqliteConnection.LibraryVersion() });
             int success = 0;
@@ -206,7 +207,7 @@ namespace VoiceEngine
                 try
                 {
                     string wal = path + "-wal";
-                    if (!Path.GetFullPath(wal).StartsWith(Path.GetFullPath(root) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                    if (!FileSystemPath.FullPath(wal).StartsWith(FileSystemPath.FullPath(root) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
                         throw new InvalidDataException("WAL链接越过源目录");
                     byte[] key = vaultKeys.ContainsKey(relative) ? FromHex(vaultKeys[relative]) : null;
                     CryptoDb.LiveSnapshotDetailed(path, Path.Combine(snapshots, relative), key, check,
@@ -261,7 +262,7 @@ namespace VoiceEngine
             int processed = 0, cached = 0, recognized = 0, failed = 0;
             bool cancelled = false;
             string temporary = Path.Combine(folder, "recognition-tmp");
-            Directory.CreateDirectory(temporary);
+            Directory.CreateDirectory(FileSystemPath.ForIo(temporary));
             try
             {
                 using (var recognizer = new LocalRecognizer(Path.Combine(asrRoot, "asr"), check))
@@ -279,7 +280,7 @@ namespace VoiceEngine
                             if (cachedValue != null) cached++;
                             else
                             {
-                                File.WriteAllBytes(raw, data);
+                                File.WriteAllBytes(FileSystemPath.ForIo(raw), data);
                                 VoiceCodec.Isolated(raw, wav, check);
                                 string text = recognizer.Recognize(wav);
                                 check();
@@ -297,8 +298,8 @@ namespace VoiceEngine
                         }
                         finally
                         {
-                            if (File.Exists(raw)) try { File.Delete(raw); } catch { }
-                            if (File.Exists(wav)) try { File.Delete(wav); } catch { }
+                            if (File.Exists(FileSystemPath.ForIo(raw))) try { File.Delete(FileSystemPath.ForIo(raw)); } catch { }
+                            if (File.Exists(FileSystemPath.ForIo(wav))) try { File.Delete(FileSystemPath.ForIo(wav)); } catch { }
                         }
                         processed++;
                         Emit(new Dictionary<string, object> {
@@ -321,12 +322,12 @@ namespace VoiceEngine
             var rows = Library.Records(index, idRequest, null);
             if (rows.Count != 1) throw new InvalidDataException("该语音未找到");
             string cache = Path.Combine(folder, "preview");
-            Directory.CreateDirectory(cache);
+            Directory.CreateDirectory(FileSystemPath.ForIo(cache));
             string raw = Path.Combine(cache, Convert.ToString(rows[0]["id"]) + ".silk");
             string wav = raw + ".wav";
-            if (!File.Exists(wav))
+            if (!File.Exists(FileSystemPath.ForIo(wav)))
             {
-                File.WriteAllBytes(raw, Library.Payload(snapshots, rows[0]));
+                File.WriteAllBytes(FileSystemPath.ForIo(raw), Library.Payload(snapshots, rows[0]));
                 VoiceCodec.Isolated(raw, wav, check);
             }
             return new Dictionary<string, object> { ["path"] = wav };

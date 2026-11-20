@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -12,6 +13,54 @@ import zipfile
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tests'))
 from test_core import dataset,tone
+
+
+def verify_long_paths(temporary, request, blob):
+    root = (temporary / '长路径验收').resolve()
+    assert root.is_relative_to(temporary.resolve())
+
+    def io_path(path):
+        return Path('\\\\?\\UNC\\' + str(path)[2:] if str(path).startswith('\\\\')
+                    else '\\\\?\\' + str(path))
+
+    def deep(name):
+        path = root / name
+        while len(str(path)) < 310:
+            path /= '多级目录 #语音%' * 6
+        return path
+
+    raw = blob + bytes(256)
+    original = dataset(temporary / 'fixture-long', blob=raw)
+    source, work, output = (deep(name) for name in ('来源', '快照', '导出'))
+    before = {path.relative_to(original): hashlib.sha256(path.read_bytes()).digest()
+              for path in original.rglob('*') if path.is_file()}
+    try:
+        shutil.copytree(original, io_path(source))
+        options = {'workspace': str(work)}
+        catalog = request(dict(options, action='catalog', source=str(source), consent=True))
+        assert catalog['count'] == 3 and not catalog['issues'], catalog
+        options['session'] = catalog['session']
+        rows = request(dict(options, action='list'))['items']
+        assert len(rows) == 3
+        result = request(dict(options, action='preview', id=rows[0]['id']))
+        assert not result['path'].startswith('\\\\?\\') and io_path(result['path']).is_file()
+        exported = request(dict(options, action='export', output=str(output), keep_silk=True, transcribe=False))
+        assert (exported['completed'], exported['failed']) == (3, 0), exported
+        assert not exported['output'].startswith('\\\\?\\')
+        path = io_path(exported['output'])
+        originals = list(path.glob('*.silk'))
+        assert len(originals) == 3 and all(file.read_bytes() == raw for file in originals)
+        wavs = list(path.glob('*.wav'))
+        assert len(wavs) == 3
+        for wav in wavs:
+            with wave.open(str(wav), 'rb') as audio:
+                assert audio.getnframes() == 24000 and audio.getframerate() == 24000
+        assert all(hashlib.sha256((io_path(source) / file).read_bytes()).digest() == digest
+                   for file, digest in before.items())
+    finally:
+        if root.exists():
+            shutil.rmtree(io_path(root))
+    print('PASS: 310+ character Chinese/#/% source, snapshot, preview and export paths; padded SILK and source bytes preserved.')
 
 
 def verify(archive):
@@ -29,6 +78,7 @@ def verify(archive):
                 assert Path(name).suffix.lower() not in {'.dpapi','.db','.sqlite','.silk','.wav','.pcm','.dmp','.key','.log'}
             zip.extractall(temporary)
         app=temporary/archive.stem
+        assert (app/'engine/VoiceWorker.exe.config').is_file()
         for row in json.loads((app/'files.sha256.json').read_text(encoding='utf-8')):
             file=app/row['path']
             assert file.resolve().is_relative_to(app)
@@ -63,6 +113,7 @@ def verify(archive):
                     assert minimum<=duration<=maximum,duration
             assert len(list(output.glob('*.wav')))==3
             assert all(file.read_bytes()==blob for file in output.glob('*.silk'))
+        verify_long_paths(temporary, request, raw)
         print('PASS: exact ZIP CRC and file hashes, private artifact exclusion, bundled engine self-test, 9 GUI-independent exports, multi/single/CRLF durations and original bytes; PATH=System32, no PYTHONHOME/PYTHONPATH.')
 
 

@@ -44,6 +44,7 @@ def package():
     engine=binary/'engine';engine.mkdir()
     engine_src=ROOT/'src/VoiceEngine/bin/Release'
     shutil.copyfile(engine_src/'VoiceEngine.exe',engine/'VoiceWorker.exe')
+    shutil.copyfile(engine_src/'VoiceEngine.exe.config',engine/'VoiceWorker.exe.config')
     shutil.copyfile(engine_src/'silk.dll',engine/'silk.dll')
     shutil.copytree(ROOT/'dist/AsrWorker',binary/'asr')
     for name in ['README.md','README.en.md','LICENSE','VERSION','CHANGELOG.md','THIRD-PARTY-NOTICES.md','dependency-provenance.json']:

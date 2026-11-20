@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using WechatVoice;
 
 namespace VoiceEngine
 {
@@ -42,14 +43,14 @@ namespace VoiceEngine
             try
             {
                 string directory = Path.Combine(workspace, "diagnostics");
-                Directory.CreateDirectory(directory);
+                Directory.CreateDirectory(FileSystemPath.ForIo(directory));
                 requestId = id;
                 path = Path.Combine(directory, "worker-" + id + ".jsonl");
-                var files = Directory.GetFiles(directory, "worker-*.jsonl*")
+                var files = FileSystemPath.GetFiles(directory, "worker-*.jsonl*")
                     .Where(name => Regex.IsMatch(Path.GetFileName(name), @"^worker-[0-9a-f]{32}\.jsonl(?:\.1)?$"))
-                    .OrderByDescending(name => File.GetLastWriteTimeUtc(name)).ToList();
+                    .OrderByDescending(name => File.GetLastWriteTimeUtc(FileSystemPath.ForIo(name))).ToList();
                 foreach (string old in files.Skip(31))
-                    try { File.Delete(old); } catch { }
+                    try { File.Delete(FileSystemPath.ForIo(old)); } catch { }
             }
             catch { path = null; }
         }
@@ -69,13 +70,13 @@ namespace VoiceEngine
                         else if (entry.Value is string && ValuePattern.IsMatch((string)entry.Value))
                             record[entry.Key] = entry.Value;
                     }
-                if (File.Exists(path) && new FileInfo(path).Length >= 256 * 1024)
+                if (File.Exists(FileSystemPath.ForIo(path)) && new FileInfo(FileSystemPath.ForIo(path)).Length >= 256 * 1024)
                 {
                     string backup = path + ".1";
-                    if (File.Exists(backup)) File.Delete(backup);
-                    File.Move(path, backup);
+                    if (File.Exists(FileSystemPath.ForIo(backup))) File.Delete(FileSystemPath.ForIo(backup));
+                    File.Move(FileSystemPath.ForIo(path), FileSystemPath.ForIo(backup));
                 }
-                File.AppendAllText(path, Json(record) + "\n", new UTF8Encoding(false));
+                File.AppendAllText(FileSystemPath.ForIo(path), Json(record) + "\n", new UTF8Encoding(false));
             }
             catch { }
         }

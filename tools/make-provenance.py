@@ -7,7 +7,7 @@ ROOT=Path(__file__).resolve().parents[1]
 def hash_file(path): return hashlib.sha256(path.read_bytes()).hexdigest()
 value={'schema':1,'target':'win-x64','python_build_reference':sys.version.split()[0],
  'runtime_files':[{'path':'engine/'+name,'bytes':(ROOT/'src/VoiceEngine/bin/Release'/source).stat().st_size,'sha256':hash_file(ROOT/'src/VoiceEngine/bin/Release'/source)}
-    for name,source in [('VoiceWorker.exe','VoiceEngine.exe'),('silk.dll','silk.dll')]],
+    for name,source in [('VoiceWorker.exe','VoiceEngine.exe'),('VoiceWorker.exe.config','VoiceEngine.exe.config'),('silk.dll','silk.dll')]],
  'wheels':[{'file':p.name,'sha256':hash_file(p),'source':'https://pypi.org/'} for p in sorted((ROOT/'.deps/wheels').glob('*.whl'))],
  'reference':{'repository':'https://github.com/qiaodogbear/ChatTrace','commit':'f9fcdb42e8fb99a527c0bcd7d6ff7ea4bc891563','archive_sha256':'1b0fbc42fd50d591765e14a0a4442a93dac6aa2cbf62b8ee2f116246dcef3e8b'},
  'format_references':[{'repository':'https://github.com/lxw112190/Moect','commit':'3d08feceae6492fe2f4f9f8e03b02ec411970c90','license':'GPL-3.0','bundled_source':False}],

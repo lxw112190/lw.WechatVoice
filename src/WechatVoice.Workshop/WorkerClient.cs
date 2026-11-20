@@ -19,7 +19,7 @@ namespace WechatVoice.Workshop
             try{
             return await Task.Run(() =>
             {
-                if (!File.Exists(path)) throw new FileNotFoundException("缺少导出引擎，请完整解压部署包。", path);
+                if (!File.Exists(FileSystemPath.ForIo(path))) throw new FileNotFoundException("缺少导出引擎，请完整解压部署包。", path);
                 var json = new JavaScriptSerializer { MaxJsonLength = 1048576 };
                 var start = new ProcessStartInfo(path) { UseShellExecute = false, CreateNoWindow = true,
                     RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true,

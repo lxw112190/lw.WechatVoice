@@ -6,6 +6,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using WechatVoice;
 
 namespace VoiceEngine
 {
@@ -229,9 +230,9 @@ namespace VoiceEngine
 
         private static int ApplyWalCore(string walPath, string targetPath, PageCipher cipher, Action check, SnapshotReporter reporter, bool encryptedOutput = false)
         {
-            if (!File.Exists(walPath) || new FileInfo(walPath).Length == 0) return 0;
+            if (!File.Exists(FileSystemPath.ForIo(walPath)) || new FileInfo(FileSystemPath.ForIo(walPath)).Length == 0) return 0;
             const int frameSize = Page + 24;
-            long size = new FileInfo(walPath).Length;
+            long size = new FileInfo(FileSystemPath.ForIo(walPath)).Length;
             if (size > MaxDb * 2 || size < 32) throw EngineErrors.Create("WAL_SIZE_INVALID", "WAL大小无效，未使用该副本");
             using (var stream = OpenRead(walPath))
             {
@@ -279,7 +280,7 @@ namespace VoiceEngine
                 var page = new byte[Page];
                 long replayBytes = (lastCommit + 1L) * frameSize;
                 reporter.Report("replay_wal", 0, replayBytes);
-                using (var output = new FileStream(targetPath, FileMode.Open, FileAccess.ReadWrite, FileShare.Read))
+                using (var output = new FileStream(FileSystemPath.ForIo(targetPath), FileMode.Open, FileAccess.ReadWrite, FileShare.Read))
                 {
                     for (int index = 0; index <= lastCommit; index++)
                     {
@@ -304,7 +305,7 @@ namespace VoiceEngine
         {
             try
             {
-                var info = new FileInfo(path);
+                var info = new FileInfo(FileSystemPath.ForIo(path));
                 if (!info.Exists) return null;
                 return new Signature { Size = info.Length, Mtime = info.LastWriteTimeUtc.ToFileTime() };
             }
@@ -322,8 +323,8 @@ namespace VoiceEngine
             var before = new Tuple<Signature?, Signature?>(Sign(sourcePath), Sign(walPath));
             if (before.Item1 == null || before.Item1.Value.Size <= 0 || before.Item1.Value.Size > MaxDb || before.Item1.Value.Size % Page != 0)
                 throw EngineErrors.Create("DB_SIZE_INVALID", "数据库大小或页大小不受支持");
-            string destinationDir = Path.GetDirectoryName(Path.GetFullPath(destinationPath));
-            Directory.CreateDirectory(destinationDir);
+            string destinationDir = Path.GetDirectoryName(FileSystemPath.FullPath(destinationPath));
+            Directory.CreateDirectory(FileSystemPath.ForIo(destinationDir));
             string temporary = Path.Combine(destinationDir, Guid.NewGuid().ToString("N") + ".snapshot.part");
             PageCipher cipher = null;
             try
@@ -345,7 +346,7 @@ namespace VoiceEngine
                     reporter.Report("analyse_pages", pages * Page, pages * Page);
                     input.Seek(0, SeekOrigin.Begin);
                     reporter.Report("decrypt", 0, pages * Page);
-                    using (var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, IoBuffer, FileOptions.SequentialScan))
+                    using (var output = new FileStream(FileSystemPath.ForIo(temporary), FileMode.CreateNew, FileAccess.Write, FileShare.None, IoBuffer, FileOptions.SequentialScan))
                     {
                         var page = new byte[Page];
                         var written = new byte[Page];
@@ -380,7 +381,7 @@ namespace VoiceEngine
             finally
             {
                 if (cipher != null) cipher.Dispose();
-                if (File.Exists(temporary)) try { File.Delete(temporary); } catch { }
+                if (File.Exists(FileSystemPath.ForIo(temporary))) try { File.Delete(FileSystemPath.ForIo(temporary)); } catch { }
             }
         }
 
@@ -392,8 +393,8 @@ namespace VoiceEngine
         internal static void LiveSnapshotDetailed(string sourcePath, string destinationPath, byte[] key, Action check,
             Action<int, int> progress, Action<Dictionary<string, object>> detail)
         {
-            if (File.Exists(destinationPath)) throw new InvalidDataException("已有数据库副本不覆盖");
-            Directory.CreateDirectory(Path.GetDirectoryName(destinationPath));
+            if (File.Exists(FileSystemPath.ForIo(destinationPath))) throw new InvalidDataException("已有数据库副本不覆盖");
+            Directory.CreateDirectory(FileSystemPath.ForIo(Path.GetDirectoryName(destinationPath)));
             string walPath = sourcePath + "-wal";
             var reporter = new SnapshotReporter(detail);
             Exception last = null;
@@ -403,7 +404,7 @@ namespace VoiceEngine
                 string tempDir = Path.Combine(Path.GetDirectoryName(destinationPath), "live-" + Guid.NewGuid().ToString("N"));
                 try
                 {
-                    Directory.CreateDirectory(tempDir);
+                    Directory.CreateDirectory(FileSystemPath.ForIo(tempDir));
                     string frozen = Path.Combine(tempDir, "source.db");
                     var before = new Tuple<Signature?, Signature?>(Sign(sourcePath), Sign(walPath));
                     CopyFrozen(sourcePath, frozen, MaxDb, check, reporter, "copy_main");
@@ -419,7 +420,7 @@ namespace VoiceEngine
                     {
                         // This is our stable, private copy. A plain SQLite database
                         // needs WAL replay + quick_check, not a second full copy.
-                        long size = new FileInfo(frozen).Length;
+                        long size = new FileInfo(FileSystemPath.ForIo(frozen)).Length;
                         if (size <= 0 || size > MaxDb || size % Page != 0)
                             throw EngineErrors.Create("DB_SIZE_INVALID", "数据库大小或页大小不受支持");
                         ApplyWalCore(frozen + "-wal", frozen, null, check, reporter);
@@ -429,7 +430,7 @@ namespace VoiceEngine
                     {
                         string frozenWal = frozen + "-wal";
                         int committedPages = 0;
-                        if (key != null && first != null && File.Exists(frozenWal))
+                        if (key != null && first != null && File.Exists(FileSystemPath.ForIo(frozenWal)))
                         {
                             // Resolve the committed encrypted view before decrypting
                             // base pages. SQLite reads the last committed WAL version;
@@ -439,9 +440,9 @@ namespace VoiceEngine
                                 committedPages = ApplyWalCore(frozenWal, frozen, cipher, check, reporter, true);
                             // Retain the original database salt: a WAL page-one prefix
                             // is outside that frame's authenticated page payload.
-                            using (var output = new FileStream(frozen, FileMode.Open, FileAccess.Write, FileShare.None))
+                            using (var output = new FileStream(FileSystemPath.ForIo(frozen), FileMode.Open, FileAccess.Write, FileShare.None))
                                 output.Write(salt, 0, salt.Length);
-                            File.Delete(frozenWal); // private, already validated frozen file only
+                            File.Delete(FileSystemPath.ForIo(frozenWal)); // private, already validated frozen file only
                         }
                         SnapshotCore(frozen, destinationPath, key, check, reporter, committedPages);
                     }
@@ -461,7 +462,7 @@ namespace VoiceEngine
                 }
                 finally
                 {
-                    try { Directory.Delete(tempDir, true); } catch { }
+                    try { Directory.Delete(FileSystemPath.ForIo(tempDir), true); } catch { }
                 }
             }
             throw EngineErrors.Create("SNAPSHOT_RETRIES_EXHAUSTED", "在线快照三次未通过：" + (last == null ? "" : last.Message), last);
@@ -470,13 +471,13 @@ namespace VoiceEngine
         private static void PublishSnapshot(string temporary, string destination, Action check, SnapshotReporter reporter)
         {
             if (check != null) check();
-            long size = new FileInfo(temporary).Length;
+            long size = new FileInfo(FileSystemPath.ForIo(temporary)).Length;
             reporter.Report("verify_db", 0, size);
             using (var connection = new NativeSqliteConnection()) connection.OpenReadOnly(temporary);
             reporter.Report("verify_db", size, size);
             if (check != null) check();
-            if (File.Exists(destination)) throw new InvalidDataException("已有数据库副本不覆盖，请重新开始一个会话");
-            File.Move(temporary, destination);
+            if (File.Exists(FileSystemPath.ForIo(destination))) throw new InvalidDataException("已有数据库副本不覆盖，请重新开始一个会话");
+            File.Move(FileSystemPath.ForIo(temporary), FileSystemPath.ForIo(destination));
         }
 
         private static void CopyFrozen(string source, string target, long limit, Action check, SnapshotReporter reporter, string stage)
@@ -490,7 +491,7 @@ namespace VoiceEngine
             if (info.Value.Size > limit) throw new InvalidDataException("数据库或WAL超过大小限制");
             reporter.Report(stage, 0, info.Value.Size);
             using (var reader = OpenRead(source))
-            using (var writer = new FileStream(target, FileMode.CreateNew, FileAccess.Write, FileShare.None, IoBuffer, FileOptions.SequentialScan))
+            using (var writer = new FileStream(FileSystemPath.ForIo(target), FileMode.CreateNew, FileAccess.Write, FileShare.None, IoBuffer, FileOptions.SequentialScan))
             {
                 long remaining = info.Value.Size;
                 var buffer = new byte[1024 * 1024];
@@ -508,7 +509,7 @@ namespace VoiceEngine
 
         private static FileStream OpenRead(string path, int bufferSize = IoBuffer)
         {
-            return new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, bufferSize, FileOptions.SequentialScan);
+            return new FileStream(FileSystemPath.ForIo(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, bufferSize, FileOptions.SequentialScan);
         }
 
         private static byte[] ReadExactly(Stream stream, int count)
@@ -586,7 +587,7 @@ namespace VoiceEngine
         {
             const int SQLITE_OPEN_READONLY = 0x00000001;
             const int SQLITE_OPEN_URI = 0x00000040;
-            string uri = SqliteConnection.FileUri(path) + "?mode=ro&immutable=1";
+            string uri = SqliteConnection.FileUri(path, "mode=ro&immutable=1");
             // winsqlite3 expects UTF-8 filenames; pass raw bytes so Chinese/space
             // paths survive without ANSI codepage mangling.
             int openCode = Open(Encoding.UTF8.GetBytes(uri + "\0"), out handle, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, IntPtr.Zero);

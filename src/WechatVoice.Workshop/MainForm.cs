@@ -42,14 +42,14 @@ namespace WechatVoice.Workshop
             RefreshProcess_Click(this,EventArgs.Empty);
             string saved=Path.Combine(workspace,"account-path.txt");
             string preferred=null;
-            if(File.Exists(saved) && new FileInfo(saved).Length<4096)
-                try{preferred=File.ReadAllText(saved).Trim();}catch{ }
+            if(File.Exists(FileSystemPath.ForIo(saved)) && new FileInfo(FileSystemPath.ForIo(saved)).Length<4096)
+                try{preferred=File.ReadAllText(FileSystemPath.ForIo(saved)).Trim();}catch{ }
             ScanAccounts(preferred);
             if(accountBox.Items.Count==0)
             {
-                if(preferred!=null && Directory.Exists(preferred))SelectSourceRoot(preferred);
+                if(preferred!=null && Directory.Exists(FileSystemPath.ForIo(preferred)))SelectSourceRoot(preferred);
                 else foreach(string candidate in new[]{Path.Combine(AccountScanner.DocumentsDirectory(),"xwechat_files"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),"WeChat Files")})
-                    if(Directory.Exists(candidate)){SelectSourceRoot(candidate);break;}
+                    if(Directory.Exists(FileSystemPath.ForIo(candidate))){SelectSourceRoot(candidate);break;}
             }
             Log("面向 Windows 微信 4.x。已自动扫描本机微信账号，可点“扫描账号”重新扫描或“选择位置”手动指定；登录后选择账号和进程，点击连接微信。");
             Log("既有真实账号实测版本：4.0.5.16；其他4.x可尝试连接，尚不承诺全部兼容。");
@@ -79,15 +79,15 @@ namespace WechatVoice.Workshop
         }
         private void SelectSourceRoot(string path)
         {
-            if(!Directory.Exists(path))return;
+            if(!Directory.Exists(FileSystemPath.ForIo(path)))return;
             selectingAccount=true;
             try
             {
                 accountBox.Items.Clear();
-                if(Directory.Exists(Path.Combine(path,"db_storage")) || Path.GetFileName(path).Equals("db_storage",StringComparison.OrdinalIgnoreCase) || Directory.GetFiles(path,"media_*.db").Length>0)
+                if(Directory.Exists(FileSystemPath.ForIo(Path.Combine(path,"db_storage"))) || Path.GetFileName(path).Equals("db_storage",StringComparison.OrdinalIgnoreCase) || FileSystemPath.GetFiles(path,"media_*.db").Length>0)
                     accountBox.Items.Add(new AccountChoice{Path=path,Text=Path.GetFileName(path)});
-                else foreach(string child in Directory.GetDirectories(path))
-                    if(Directory.Exists(Path.Combine(child,"db_storage")))accountBox.Items.Add(new AccountChoice{Path=child,Text=Path.GetFileName(child)});
+                else foreach(string child in FileSystemPath.GetDirectories(path))
+                    if(Directory.Exists(FileSystemPath.ForIo(Path.Combine(child,"db_storage"))))accountBox.Items.Add(new AccountChoice{Path=child,Text=Path.GetFileName(child)});
                 accountBox.SelectedIndex=accountBox.Items.Count==1?0:-1;
                 sourceText.Text=accountBox.SelectedItem is AccountChoice?((AccountChoice)accountBox.SelectedItem).Path:"";
                 if(accountBox.Items.Count==0)Log("此位置未发现账号，可选择单个账号、xwechat_files或解密库目录。");
@@ -105,8 +105,8 @@ namespace WechatVoice.Workshop
             if(busy)return;
             string preferred=null;
             var choice=accountBox.SelectedItem as AccountChoice;
-            if(choice!=null && Directory.Exists(choice.Path))preferred=choice.Path;
-            else if(Directory.Exists(sourceText.Text))preferred=sourceText.Text;
+            if(choice!=null && Directory.Exists(FileSystemPath.ForIo(choice.Path)))preferred=choice.Path;
+            else if(Directory.Exists(FileSystemPath.ForIo(sourceText.Text)))preferred=sourceText.Text;
             ScanAccounts(preferred);
         }
         private void ScanAccounts(string preferredPath)
@@ -153,13 +153,13 @@ namespace WechatVoice.Workshop
             if(string.IsNullOrWhiteSpace(a) || string.IsNullOrWhiteSpace(b))return false;
             try
             {
-                return string.Equals(Path.GetFullPath(a.Trim()).TrimEnd('\\','/'),Path.GetFullPath(b.Trim()).TrimEnd('\\','/'),StringComparison.OrdinalIgnoreCase);
+                return string.Equals(FileSystemPath.FullPath(a.Trim()).TrimEnd('\\','/'),FileSystemPath.FullPath(b.Trim()).TrimEnd('\\','/'),StringComparison.OrdinalIgnoreCase);
             }
             catch{return false;}
         }
         private void SourceText_TextChanged(object sender, EventArgs e)
         {
-            if(!selectingAccount && Directory.Exists(sourceText.Text))
+            if(!selectingAccount && Directory.Exists(FileSystemPath.ForIo(sourceText.Text)))
             {
                 selectingAccount=true;accountBox.Items.Clear();accountBox.Items.Add(new AccountChoice{Path=sourceText.Text,Text=Path.GetFileName(sourceText.Text)});accountBox.SelectedIndex=0;selectingAccount=false;
             }
@@ -196,7 +196,7 @@ namespace WechatVoice.Workshop
         private bool SourceReady()
         {
             if (!consentBox.Checked) { MessageBox.Show(this, "请先确认仅处理本人或已获授权的账号数据。"); return false; }
-            if (!Directory.Exists(sourceText.Text)) { MessageBox.Show(this, "请点“选择位置”，然后选择一个账号。"); return false; }
+            if (!Directory.Exists(FileSystemPath.ForIo(sourceText.Text))) { MessageBox.Show(this, "请点“选择位置”，然后选择一个账号。"); return false; }
             return true;
         }
         private async void Prepare_Click(object sender, EventArgs e)
@@ -230,7 +230,7 @@ namespace WechatVoice.Workshop
             exportAllButton.Text = favoriteMode ? "导出收藏…" : "会话导出…";
             if (favoriteMode) contactKind.SelectedIndex = 0;
             UpdateVoiceHeaders();
-            try{Directory.CreateDirectory(workspace);File.WriteAllText(Path.Combine(workspace,"account-path.txt"),sourceText.Text,new System.Text.UTF8Encoding(false));}
+            try{Directory.CreateDirectory(FileSystemPath.ForIo(workspace));File.WriteAllText(FileSystemPath.ForIo(Path.Combine(workspace,"account-path.txt")),sourceText.Text,new System.Text.UTF8Encoding(false));}
             catch(Exception ex){Log("未能记住账号位置："+ex.Message);}
             Log("读取本地语音 " + WorkerClient.Get(result, "count") + " 条；数据库 " + WorkerClient.Get(result, "databases") + " / " + WorkerClient.Get(result, "expected_databases") + "。");
             foreach (object issue in WorkerClient.Array(result, "issues")) Log("需注意：" + issue);
@@ -353,7 +353,21 @@ namespace WechatVoice.Workshop
             if (voiceList.SelectedItems.Count != 1) { MessageBox.Show(this, "请选择一条语音试听。"); return; }
             StopAudio(); var request = Filter("preview"); request["id"] = voiceList.SelectedItems[0].Tag;
             var result = await RunAsync(request);
-            if (result != null && !closing && !IsDisposed) { try { player = new SoundPlayer(WorkerClient.Get(result, "path")); player.Load(); player.Play(); statusLabel.Text="正在试听 · 切换会话或翻页将停止播放"; } catch (Exception ex) { Log("播放失败：" + ex.Message);statusLabel.Text="试听失败，请查看诊断。"; } }
+            if (result != null && !closing && !IsDisposed)
+            {
+                try
+                {
+                    string path = WorkerClient.Get(result, "path");
+                    using (var wave = new FileStream(FileSystemPath.ForIo(path), FileMode.Open, FileAccess.Read, FileShare.Read))
+                    {
+                        player = new SoundPlayer(wave);
+                        player.Load();
+                        player.Play();
+                    }
+                    statusLabel.Text = "正在试听 · 切换会话或翻页将停止播放";
+                }
+                catch (Exception ex) { Log("播放失败：" + ex.Message); statusLabel.Text = "试听失败，请查看诊断。"; }
+            }
         }
         private void Stop_Click(object sender, EventArgs e) { StopAudio();if(!busy)statusLabel.Text="试听已停止"; }
         private void VoiceList_DoubleClick(object sender,EventArgs e){if(!busy && voiceList.SelectedItems.Count==1)Preview_Click(sender,e);}
@@ -436,14 +450,14 @@ namespace WechatVoice.Workshop
         }
         private void Cancel_Click(object sender, EventArgs e)
         {
-            if (busy && cancelPath != null) try { File.WriteAllText(cancelPath, "cancel");cancelling=true;cancelButton.Enabled=false; statusLabel.Text = "正在取消，保留已生成文件…"; } catch (Exception ex) { Log(ex.Message); }
+            if (busy && cancelPath != null) try { File.WriteAllText(FileSystemPath.ForIo(cancelPath), "cancel");cancelling=true;cancelButton.Enabled=false; statusLabel.Text = "正在取消，保留已生成文件…"; } catch (Exception ex) { Log(ex.Message); }
         }
         private void OpenOutput_Click(object sender, EventArgs e)
         {
             try
             {
                 string path = lastOutput ?? UiPreferences.ResolveOutput(outputText.Text);
-                if (Directory.Exists(path))Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+                if (Directory.Exists(FileSystemPath.ForIo(path)))Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
                 else statusLabel.Text="导出目录尚未创建，完成首次导出后可打开。";
             }
             catch(Exception ex){Log(ex.Message);}
@@ -454,7 +468,7 @@ namespace WechatVoice.Workshop
             int revision=++operation;
             try
             {
-                Directory.CreateDirectory(workspace); cancelPath = Path.Combine(workspace, "cancel-" + Guid.NewGuid().ToString("N"));
+                Directory.CreateDirectory(FileSystemPath.ForIo(workspace)); cancelPath = Path.Combine(workspace, "cancel-" + Guid.NewGuid().ToString("N"));
                 request["workspace"] = workspace; request["cancel"] = cancelPath;
                 busy = true;cancelling=false; UpdateActions();progressBar.Value=0; progressBar.Style = ProgressBarStyle.Marquee; statusLabel.Text = "处理中…";
                 var result=await WorkerClient.RunAsync(engine, request, value=>Progress(value,revision));
@@ -465,7 +479,7 @@ namespace WechatVoice.Workshop
             finally
             {
                 ++operation;busy = false; progressBar.Style = ProgressBarStyle.Blocks;
-                if (cancelPath != null) try { File.Delete(cancelPath); } catch { }
+                if (cancelPath != null) try { File.Delete(FileSystemPath.ForIo(cancelPath)); } catch { }
                 cancelPath = null; UpdateActions(); if (closing) Close();
             }
         }

@@ -6,7 +6,7 @@
 
 C# / .NET Framework 4.8, native SILK decoding, and optional offline SenseVoice transcription. Browse conversations, filter dates, preview audio and export batches with searchable filenames and CSV manifests. No Python, GPU or cloud API is required to run the packaged application.
 
-Source preparation version: **1.1.1**, adding favorite voice export. Published stable release: **1.0.0**. Windows 10/11 x64. WeChat 4.x processes may be attempted after explicit user consent, but this is **not a claim of universal 4.x compatibility**. Current real-account verification remains pending.
+Version **1.1.2** fixes a Windows long-path failure during voice database snapshots. It targets Windows 10/11 x64. The current engine has passed synthetic regression tests. Check compatibility with your specific WeChat 4.x environment. See the [1.1.2 release notes](docs/releases/v1.1.2.md).
 
 ![Workshop with synthetic test data](docs/images/workshop-synthetic.png)
 

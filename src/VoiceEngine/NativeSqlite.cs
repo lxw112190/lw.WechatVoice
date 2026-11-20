@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using WechatVoice;
 
 namespace VoiceEngine
 {
@@ -61,16 +62,20 @@ namespace VoiceEngine
 
         internal SqliteConnection(IntPtr handle) { Handle = handle; }
 
-        internal static string FileUri(string path)
+        internal static string FileUri(string path, string options)
         {
             // Escape literal #, %, ? and non-ASCII characters before adding URI options.
-            return new Uri(Path.GetFullPath(path)).AbsoluteUri;
+            string full = FileSystemPath.FullPath(path);
+            string native = FileSystemPath.ForIo(full);
+            if (native == full) return new Uri(full).AbsoluteUri + "?" + options;
+            // Encode the extended path as a single URI path so SQLite does not read its ? as a query.
+            return "file:" + Uri.EscapeDataString(native) + "?" + options + "&vfs=win32-longpath";
         }
 
         internal static SqliteConnection OpenReadWrite(string path)
         {
             IntPtr handle;
-            if (Open(Utf8Z(FileUri(path) + "?mode=rwc"), out handle, OpenReadwrite | OpenCreate | OpenUri, IntPtr.Zero) != 0)
+            if (Open(Utf8Z(FileUri(path, "mode=rwc")), out handle, OpenReadwrite | OpenCreate | OpenUri, IntPtr.Zero) != 0)
             {
                 string error = handle == IntPtr.Zero ? "" : Describe(handle);
                 if (handle != IntPtr.Zero) Close(handle);
@@ -82,7 +87,7 @@ namespace VoiceEngine
         internal static SqliteConnection OpenReadOnly(string path)
         {
             IntPtr handle;
-            if (Open(Utf8Z(FileUri(path) + "?mode=ro&immutable=1"), out handle, OpenReadonly | OpenUri, IntPtr.Zero) != 0)
+            if (Open(Utf8Z(FileUri(path, "mode=ro&immutable=1")), out handle, OpenReadonly | OpenUri, IntPtr.Zero) != 0)
             {
                 if (handle != IntPtr.Zero) Close(handle);
                 throw new InvalidDataException("无法打开数据库副本");

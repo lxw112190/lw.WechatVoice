@@ -35,11 +35,11 @@ try {
     Copy-Item -LiteralPath src/AsrWorker/bin/Release/AsrWorker.exe.config -Destination dist/AsrWorker/AsrWorker.exe.config -Force
     & $compiler /nologo /langversion:7.3 /platform:x64 /target:exe /reference:System.dll /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll /reference:System.Design.dll /out:build/FormsCheck.exe tests/FormsCheck.cs
     if($LASTEXITCODE -ne 0){ throw 'Designer/test harness compilation failed.' }
-    & $compiler /nologo /langversion:7.3 /platform:x64 /target:exe /reference:System.dll /reference:System.Core.dll /reference:System.Web.Extensions.dll /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll /out:build/IpcCheck.exe tests/IpcCheck.cs src/WechatVoice.Workshop/WorkerClient.cs src/WechatVoice.Workshop/Diagnostics.cs
+    & $compiler /nologo /langversion:7.3 /platform:x64 /target:exe /reference:System.dll /reference:System.Core.dll /reference:System.Web.Extensions.dll /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll /out:build/IpcCheck.exe tests/IpcCheck.cs src/WechatVoice.Workshop/WorkerClient.cs src/WechatVoice.Workshop/Diagnostics.cs src/VoiceEngine/FileSystemPath.cs
     if($LASTEXITCODE -ne 0){throw 'IPC harness compilation failed.'}
     & ./build/FormsCheck.exe ./src/WechatVoice.Workshop/bin/Release/WechatVoice.Workshop.exe ./test-results/designer
     if($LASTEXITCODE -ne 0){ throw 'DesignSurface check failed.' }
-    & $compiler /nologo /langversion:7.3 /platform:x64 /target:exe /reference:System.dll /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll /reference:System.Web.Extensions.dll /out:build/UiBehaviorCheck.exe tests/UiBehaviorCheck.cs src/WechatVoice.Workshop/UiPreferences.cs src/WechatVoice.Workshop/ExportForm.cs src/WechatVoice.Workshop/ExportForm.Designer.cs src/WechatVoice.Workshop/AccountScanner.cs
+    & $compiler /nologo /langversion:7.3 /platform:x64 /target:exe /reference:System.dll /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll /reference:System.Web.Extensions.dll /out:build/UiBehaviorCheck.exe tests/UiBehaviorCheck.cs src/WechatVoice.Workshop/UiPreferences.cs src/WechatVoice.Workshop/ExportForm.cs src/WechatVoice.Workshop/ExportForm.Designer.cs src/WechatVoice.Workshop/AccountScanner.cs src/VoiceEngine/FileSystemPath.cs
     if($LASTEXITCODE -ne 0){throw 'UI behavior harness compilation failed.'}
     & ./build/UiBehaviorCheck.exe (Join-Path $projectRoot ('test-results/ui-settings-'+[Guid]::NewGuid().ToString('N')))
     if($LASTEXITCODE -ne 0){throw 'UI behavior regression failed.'}

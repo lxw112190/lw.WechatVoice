@@ -66,6 +66,9 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
           name: lw.WechatVoice-win-x64
@@ -81,4 +84,10 @@ jobs:
           if [[ "${#files[@]}" -ne 6 ]]; then echo 'Expected exactly three packages and three checksums'; exit 1; fi
           flags=()
           if [[ "$RELEASE_TAG" == *-* ]]; then flags+=(--prerelease); fi
-          gh release create "$RELEASE_TAG" "${files[@]}" --verify-tag --title "$RELEASE_TAG" --generate-notes "${flags[@]}"
+          notes="docs/releases/$RELEASE_TAG.md"
+          if [[ -f "$notes" ]]; then
+            flags+=(--notes-file "$notes")
+          else
+            flags+=(--generate-notes)
+          fi
+          gh release create "$RELEASE_TAG" "${files[@]}" --verify-tag --title "$RELEASE_TAG" "${flags[@]}"

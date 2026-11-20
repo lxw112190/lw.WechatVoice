@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web.Script.Serialization;
+using WechatVoice;
 
 namespace VoiceEngine
 {
@@ -39,15 +40,15 @@ namespace VoiceEngine
 
         private static Tuple<string, List<string>> DatabaseSet(string folder, bool favorites)
         {
-            string root = Path.GetFullPath(folder);
-            if (Directory.Exists(Path.Combine(root, "db_storage")))
-                root = Path.GetFullPath(Path.Combine(root, "db_storage"));
-            else if (Directory.GetDirectories(root).Any(child => Directory.Exists(Path.Combine(child, "db_storage"))))
+            string root = FileSystemPath.FullPath(folder);
+            if (Directory.Exists(FileSystemPath.ForIo(Path.Combine(root, "db_storage"))))
+                root = FileSystemPath.FullPath(Path.Combine(root, "db_storage"));
+            else if (FileSystemPath.GetDirectories(root).Any(child => Directory.Exists(FileSystemPath.ForIo(Path.Combine(child, "db_storage")))))
                 throw new InvalidDataException("此目录含多个/下一级账号，请先选择一个具体账号，未混合读取");
             var files = new List<string>();
-            foreach (string path in Directory.GetFiles(root, "*.db", SearchOption.AllDirectories))
+            foreach (string path in FileSystemPath.GetFiles(root, "*.db", SearchOption.AllDirectories))
             {
-                string full = Path.GetFullPath(path);
+                string full = FileSystemPath.FullPath(path);
                 if (!full.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
                     throw new InvalidDataException("源目录包含越界链接，未读取");
                 string name = Path.GetFileName(path);
@@ -55,7 +56,7 @@ namespace VoiceEngine
                     Regex.IsMatch(name, @"^(?:media|message)_\d+\.db$", RegexOptions.IgnoreCase);
                 if (favorites && name.Equals("favorite.db", StringComparison.OrdinalIgnoreCase)) wanted = true;
                 if (!wanted) continue;
-                long size = new FileInfo(path).Length;
+                long size = new FileInfo(FileSystemPath.ForIo(path)).Length;
                 if (size <= 0 || size > 32L * 1024 * 1024 * 1024)
                     throw new InvalidDataException("数据库大小超出支持范围");
                 files.Add(full);
@@ -66,7 +67,7 @@ namespace VoiceEngine
                 throw new InvalidDataException("没有找到收藏库；请在电脑微信打开收藏，再选择账号目录或 db_storage");
             if (!favorites && !files.Any(path => Path.GetFileName(path).StartsWith("media_", StringComparison.OrdinalIgnoreCase)))
                 throw new InvalidDataException("没有找到media_*.db；请选择一个微信账号目录或db_storage目录");
-            if (files.Sum(path => new FileInfo(path).Length) > 64L * 1024 * 1024 * 1024)
+            if (files.Sum(path => new FileInfo(FileSystemPath.ForIo(path)).Length) > 64L * 1024 * 1024 * 1024)
                 throw new InvalidDataException("所选数据库超过64GiB，首版暂不支持");
             files.Sort(StringComparer.OrdinalIgnoreCase);
             return Tuple.Create(root, files);
@@ -173,7 +174,7 @@ namespace VoiceEngine
             foreach (string path in files)
             {
                 var first = new byte[CryptoDb.Page];
-                using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                using (var stream = new FileStream(FileSystemPath.ForIo(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
                 {
                     int read = 0;
                     while (read < first.Length) { int n = stream.Read(first, read, first.Length - read); if (n == 0) break; read += n; }
@@ -201,12 +202,12 @@ namespace VoiceEngine
                 foreach (string path in entry.Value)
                 {
                     var page = new byte[CryptoDb.Page];
-                    using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                    using (var stream = new FileStream(FileSystemPath.ForIo(path), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
                     {
                         int read = 0;
                         while (read < page.Length) { int n = stream.Read(page, read, page.Length - read); if (n == 0) break; read += n; }
                     }
-                    pages[entry.Key].Add(new KeyValuePair<string, byte[]>(Path.GetFullPath(path).Substring(root.Length + 1), page));
+                    pages[entry.Key].Add(new KeyValuePair<string, byte[]>(FileSystemPath.FullPath(path).Substring(root.Length + 1), page));
                 }
             }
             var started = DateTime.UtcNow;
@@ -314,35 +315,35 @@ namespace VoiceEngine
         internal static void SaveVault(string path, string root, Dictionary<string, string> keys)
         {
             var serializer = new JavaScriptSerializer();
-            var payload = new Dictionary<string, object> { ["schema"] = 1, ["root"] = Path.GetFullPath(root), ["keys"] = keys };
+            var payload = new Dictionary<string, object> { ["schema"] = 1, ["root"] = FileSystemPath.FullPath(root), ["keys"] = keys };
             byte[] protectedBytes = ProtectedData.Protect(Encoding.UTF8.GetBytes(serializer.Serialize(payload)), null, DataProtectionScope.CurrentUser);
-            string full = Path.GetFullPath(path);
-            Directory.CreateDirectory(Path.GetDirectoryName(full));
+            string full = FileSystemPath.FullPath(path);
+            Directory.CreateDirectory(FileSystemPath.ForIo(Path.GetDirectoryName(full)));
             string temporary = full + ".part";
             try
             {
-                File.WriteAllBytes(temporary, protectedBytes);
-                if (File.Exists(full)) File.Delete(full);
-                File.Move(temporary, full);
+                File.WriteAllBytes(FileSystemPath.ForIo(temporary), protectedBytes);
+                if (File.Exists(FileSystemPath.ForIo(full))) File.Delete(FileSystemPath.ForIo(full));
+                File.Move(FileSystemPath.ForIo(temporary), FileSystemPath.ForIo(full));
             }
-            finally { if (File.Exists(temporary)) try { File.Delete(temporary); } catch { } }
+            finally { if (File.Exists(FileSystemPath.ForIo(temporary))) try { File.Delete(FileSystemPath.ForIo(temporary)); } catch { } }
         }
 
         internal static Dictionary<string, string> LoadVault(string path, string root)
         {
-            string full = Path.GetFullPath(path);
-            if (!File.Exists(full)) return new Dictionary<string, string>();
-            if (new FileInfo(full).Length > 256 * 1024)
+            string full = FileSystemPath.FullPath(path);
+            if (!File.Exists(FileSystemPath.ForIo(full))) return new Dictionary<string, string>();
+            if (new FileInfo(FileSystemPath.ForIo(full)).Length > 256 * 1024)
                 throw new InvalidDataException("本机密钥文件过大");
             byte[] unprotected;
-            try { unprotected = ProtectedData.Unprotect(File.ReadAllBytes(full), null, DataProtectionScope.CurrentUser); }
+            try { unprotected = ProtectedData.Unprotect(File.ReadAllBytes(FileSystemPath.ForIo(full)), null, DataProtectionScope.CurrentUser); }
             catch { throw new InvalidDataException("本机密钥文件无法解密"); }
             var serializer = new JavaScriptSerializer();
             Dictionary<string, object> value;
             try { value = serializer.Deserialize<Dictionary<string, object>>(Encoding.UTF8.GetString(unprotected)); }
             catch { throw new InvalidDataException("本机密钥文件格式无效"); }
             if (value == null || !value.ContainsKey("schema") || Convert.ToInt32(value["schema"]) != 1 ||
-                !value.ContainsKey("root") || Convert.ToString(value["root"]) != Path.GetFullPath(root))
+                !value.ContainsKey("root") || Convert.ToString(value["root"]) != FileSystemPath.FullPath(root))
                 throw new InvalidDataException("密钥文件与当前所选账号不一致");
             var keys = value.ContainsKey("keys") ? value["keys"] as Dictionary<string, object> : null;
             if (keys == null || keys.Count > 512 || keys.Values.Any(v => !Regex.IsMatch(Convert.ToString(v), "^[0-9a-f]{64}$")))

@@ -20,9 +20,9 @@ namespace WechatVoice.Workshop
         public string To { get; set; }
         internal static UiPreferences Load(string path)
         {
-            if (!File.Exists(path)) return new UiPreferences();
-            if (new FileInfo(path).Length > 65536) throw new InvalidDataException("界面设置过大，已使用默认设置。");
-            var value = new JavaScriptSerializer { MaxJsonLength = 65536 }.Deserialize<UiPreferences>(File.ReadAllText(path, Encoding.UTF8)) ?? new UiPreferences();
+            if (!File.Exists(FileSystemPath.ForIo(path))) return new UiPreferences();
+            if (new FileInfo(FileSystemPath.ForIo(path)).Length > 65536) throw new InvalidDataException("界面设置过大，已使用默认设置。");
+            var value = new JavaScriptSerializer { MaxJsonLength = 65536 }.Deserialize<UiPreferences>(File.ReadAllText(FileSystemPath.ForIo(path), Encoding.UTF8)) ?? new UiPreferences();
             value.Sort = Math.Max(0, Math.Min(5, value.Sort)); value.Kind = Math.Max(0, Math.Min(2, value.Kind));
             value.VoiceSort=Math.Max(0,Math.Min(6,value.VoiceSort));
             ResolveOutput(value.Output); return value;
@@ -30,18 +30,18 @@ namespace WechatVoice.Workshop
         internal static string ResolveOutput(string path)
         {
             if (string.IsNullOrWhiteSpace(path) || path.Length > 16000) throw new ArgumentException("请选择有效的导出文件夹。");
-            return Path.GetFullPath(Path.IsPathRooted(path) ? path : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, path));
+            return FileSystemPath.FullPath(Path.IsPathRooted(path) ? path : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, path));
         }
         internal void Save(string path)
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(path));
+            Directory.CreateDirectory(FileSystemPath.ForIo(Path.GetDirectoryName(path)));
             string temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
             try
             {
-                File.WriteAllText(temporary, new JavaScriptSerializer().Serialize(this), new UTF8Encoding(false));
-                if (File.Exists(path)) File.Replace(temporary, path, null); else File.Move(temporary, path);
+                File.WriteAllText(FileSystemPath.ForIo(temporary), new JavaScriptSerializer().Serialize(this), new UTF8Encoding(false));
+                if (File.Exists(FileSystemPath.ForIo(path))) File.Replace(FileSystemPath.ForIo(temporary), FileSystemPath.ForIo(path), null); else File.Move(FileSystemPath.ForIo(temporary), FileSystemPath.ForIo(path));
             }
-            finally { if (File.Exists(temporary)) File.Delete(temporary); }
+            finally { if (File.Exists(FileSystemPath.ForIo(temporary))) File.Delete(FileSystemPath.ForIo(temporary)); }
         }
     }
 }

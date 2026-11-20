@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Collections.Generic;
 using System.Web.Script.Serialization;
 using SherpaOnnx;
+using WechatVoice;
 
 namespace WechatVoice.Asr
 {
@@ -63,7 +64,7 @@ namespace WechatVoice.Asr
         }
         private static float[] ReadWave(string path,out int rate)
         {
-            using(var stream=File.OpenRead(path)) using(var reader=new BinaryReader(stream))
+            using(var stream=File.OpenRead(FileSystemPath.ForIo(path))) using(var reader=new BinaryReader(stream))
             {
                 if(stream.Length>18*1024*1024 || new string(reader.ReadChars(4))!="RIFF") throw new InvalidDataException();
                 reader.ReadUInt32();if(new string(reader.ReadChars(4))!="WAVE") throw new InvalidDataException();

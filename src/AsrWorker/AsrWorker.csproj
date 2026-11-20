@@ -9,6 +9,6 @@
   <ItemGroup><Reference Include="System"/><Reference Include="System.Core"/><Reference Include="System.Web.Extensions"/>
     <Reference Include="sherpa-onnx"><HintPath>..\..\.deps\asr-kids\sherpa-onnx.dll</HintPath><Private>true</Private></Reference>
   </ItemGroup>
-  <ItemGroup><Compile Include="Program.cs"/><Compile Include="NativeSpeechApi.cs"/><None Include="..\WechatVoice.Workshop\App.config"><Link>App.config</Link></None></ItemGroup>
+  <ItemGroup><Compile Include="Program.cs"/><Compile Include="NativeSpeechApi.cs"/><Compile Include="..\VoiceEngine\FileSystemPath.cs"><Link>FileSystemPath.cs</Link></Compile><None Include="..\WechatVoice.Workshop\App.config"><Link>App.config</Link></None></ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets"/>
 </Project>

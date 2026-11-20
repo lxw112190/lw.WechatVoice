@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web.Script.Serialization;
+using WechatVoice;
 
 namespace VoiceEngine
 {
@@ -31,8 +32,8 @@ namespace VoiceEngine
 
         internal static void EnsureOutside(string output, string source)
         {
-            string outFull = Path.GetFullPath(output).TrimEnd('\\', '/');
-            string sourceFull = Path.GetFullPath(source).TrimEnd('\\', '/');
+            string outFull = FileSystemPath.FullPath(output).TrimEnd('\\', '/');
+            string sourceFull = FileSystemPath.FullPath(source).TrimEnd('\\', '/');
             if (outFull.Equals(sourceFull, StringComparison.OrdinalIgnoreCase) ||
                 outFull.StartsWith(sourceFull + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
                 outFull.StartsWith(sourceFull + "/", StringComparison.OrdinalIgnoreCase))
@@ -41,15 +42,15 @@ namespace VoiceEngine
 
         internal static void WriteJson(string path, object value)
         {
-            string full = Path.GetFullPath(path);
+            string full = FileSystemPath.FullPath(path);
             string temporary = full + ".json.part";
             try
             {
-                File.WriteAllText(temporary, new JavaScriptSerializer().Serialize(value), new UTF8Encoding(false));
-                if (File.Exists(full)) File.Delete(full);
-                File.Move(temporary, full);
+                File.WriteAllText(FileSystemPath.ForIo(temporary), new JavaScriptSerializer().Serialize(value), new UTF8Encoding(false));
+                if (File.Exists(FileSystemPath.ForIo(full))) File.Delete(FileSystemPath.ForIo(full));
+                File.Move(FileSystemPath.ForIo(temporary), FileSystemPath.ForIo(full));
             }
-            finally { if (File.Exists(temporary)) try { File.Delete(temporary); } catch { } }
+            finally { if (File.Exists(FileSystemPath.ForIo(temporary))) try { File.Delete(FileSystemPath.ForIo(temporary)); } catch { } }
         }
 
         internal static Dictionary<string, object> Run(string workspace, Dictionary<string, object> request, Action check, Action<Dictionary<string, object>> progress)
@@ -57,14 +58,14 @@ namespace VoiceEngine
             var paths = SessionPaths(workspace, request.ContainsKey("session") ? request["session"] : null);
             string folder = paths.Item1, snapshots = paths.Item2, index = paths.Item3;
             var serializer = new JavaScriptSerializer();
-            var state = serializer.Deserialize<Dictionary<string, object>>(File.ReadAllText(Path.Combine(folder, "session.json"), Encoding.UTF8));
+            var state = serializer.Deserialize<Dictionary<string, object>>(File.ReadAllText(FileSystemPath.ForIo(Path.Combine(folder, "session.json")), Encoding.UTF8));
             long total = Library.Counting(index, request);
             if (check != null) check();
-            string output = Path.GetFullPath(Convert.ToString(request["output"]));
+            string output = FileSystemPath.FullPath(Convert.ToString(request["output"]));
             EnsureOutside(output, Convert.ToString(state["source"]));
-            Directory.CreateDirectory(output);
+            Directory.CreateDirectory(FileSystemPath.ForIo(output));
             string destination = Path.Combine(output, "微信语音-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + "-" + Guid.NewGuid().ToString("N").Substring(0, 8));
-            Directory.CreateDirectory(destination);
+            Directory.CreateDirectory(FileSystemPath.ForIo(destination));
             int completed = 0, failed = 0, recognized = 0, recognitionFailed = 0;
             bool cancelled = false;
             bool useAsr = request.ContainsKey("transcribe") && Convert.ToBoolean(request["transcribe"]);
@@ -89,8 +90,8 @@ namespace VoiceEngine
             {
                 report("export");
                 using (var recognizer = useAsr ? new LocalRecognizer(Path.Combine(baseDir, "asr"), check) : null)
-                using (var journal = new StreamWriter(Path.Combine(destination, "progress.ndjson"), false, new UTF8Encoding(false)))
-                using (var csv = new StreamWriter(Path.Combine(destination, "语音清单.csv"), false, new UTF8Encoding(true)))
+                using (var journal = new StreamWriter(FileSystemPath.ForIo(Path.Combine(destination, "progress.ndjson")), false, new UTF8Encoding(false)))
+                using (var csv = new StreamWriter(FileSystemPath.ForIo(Path.Combine(destination, "语音清单.csv")), false, new UTF8Encoding(true)))
                 {
                     WriteCsvHeader(csv);
                     foreach (var row in Library.Records(index, request, null))
@@ -107,7 +108,7 @@ namespace VoiceEngine
                             string name = Library.Filename(row);
                             string rawPath = Path.Combine(destination, name + ".silk");
                             wavPath = Path.Combine(destination, name + ".wav");
-                            using (var raw = new FileStream(rawPath, FileMode.CreateNew, FileAccess.Write, FileShare.None)) raw.Write(data, 0, data.Length);
+                            using (var raw = new FileStream(FileSystemPath.ForIo(rawPath), FileMode.CreateNew, FileAccess.Write, FileShare.None)) raw.Write(data, 0, data.Length);
                             result["silk"] = name + ".silk";
                             result["sha256"] = Library.Sha256Bytes(data);
                             result["duration"] = PyFloat(VoiceCodec.Isolated(rawPath, wavPath, check));
@@ -139,11 +140,11 @@ namespace VoiceEngine
                             }
                             result["text"] = text;
                             string renamed = Path.Combine(destination, Library.WavFilename(row, text));
-                            if (File.Exists(renamed)) throw new InvalidDataException("已有WAV不覆盖");
-                            File.Move(wavPath, renamed);
+                            if (File.Exists(FileSystemPath.ForIo(renamed))) throw new InvalidDataException("已有WAV不覆盖");
+                            File.Move(FileSystemPath.ForIo(wavPath), FileSystemPath.ForIo(renamed));
                             if (!(!request.ContainsKey("keep_silk") || Convert.ToBoolean(request["keep_silk"])))
                             {
-                                File.Delete(rawPath);
+                                File.Delete(FileSystemPath.ForIo(rawPath));
                                 result["silk"] = "";
                             }
                             result["wav"] = Path.GetFileName(renamed);
@@ -156,7 +157,7 @@ namespace VoiceEngine
                             // Record it in the partial journal without reporting it as completed.
                             result["status"] = "已取消；本条保留已生成文件";
                             result["asr_status"] = useAsr ? "已取消" : "未启用";
-                            if (result.ContainsKey("duration") && wavPath != null && File.Exists(wavPath)) result["wav"] = Path.GetFileName(wavPath);
+                            if (result.ContainsKey("duration") && wavPath != null && File.Exists(FileSystemPath.ForIo(wavPath))) result["wav"] = Path.GetFileName(wavPath);
                             WriteCsvRow(csv, result);
                             journal.WriteLine(serializer.Serialize(result));
                             journal.Flush(); csv.Flush();

@@ -6,6 +6,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Web.Script.Serialization;
+using WechatVoice;
 
 namespace VoiceEngine
 {
@@ -35,7 +36,7 @@ namespace VoiceEngine
         private void Start()
         {
             string executable = Path.Combine(root, "AsrWorker.exe");
-            if (!File.Exists(executable)) throw new InvalidDataException("缺少本地识别组件，WAV仍正常导出");
+            if (!File.Exists(FileSystemPath.ForIo(executable))) throw new InvalidDataException("缺少本地识别组件，WAV仍正常导出");
             var start = new ProcessStartInfo(executable)
             {
                 UseShellExecute = false, CreateNoWindow = true,
@@ -94,7 +95,7 @@ namespace VoiceEngine
             if (check != null) check();
             if (process == null) Start();
             var serializer = new JavaScriptSerializer();
-            var line = Encoding.UTF8.GetBytes(serializer.Serialize(new Dictionary<string, object> { ["wav"] = Path.GetFullPath(wav) }) + "\n");
+            var line = Encoding.UTF8.GetBytes(serializer.Serialize(new Dictionary<string, object> { ["wav"] = FileSystemPath.FullPath(wav) }) + "\n");
             try
             {
                 process.StandardInput.BaseStream.Write(line, 0, line.Length);

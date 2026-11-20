@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using WechatVoice;
 
 namespace VoiceEngine
 {
@@ -33,7 +34,7 @@ namespace VoiceEngine
         {
             string file = Path(index);
             var result = new Dictionary<string, object>();
-            if (!File.Exists(file) || ids == null || ids.Count == 0) return result;
+            if (!File.Exists(FileSystemPath.ForIo(file)) || ids == null || ids.Count == 0) return result;
             if (ids.Count > 50) throw new InvalidDataException("缓存每次只读取一页");
             using (var db = SqliteConnection.OpenReadOnly(file))
             {
