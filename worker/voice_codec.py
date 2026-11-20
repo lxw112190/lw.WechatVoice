@@ -9,6 +9,8 @@ import wave
 
 RATE=24000
 MAX_PCM=RATE*2*90
+MAX_PACKETS=4500
+MAX_ZERO_PADDING=256
 
 
 def packet_stream(raw):
@@ -18,27 +20,24 @@ def packet_stream(raw):
     if data[9:11]==b'\r\n': starts.append(11)
     elif data[9:10]==b'\n': starts.append(10)
     for start in starts:
-        at=start;packets=[]
-        while at<len(data):
-            begin=at
-            if at+2>len(data): break
-            size=int.from_bytes(data[at:at+2],'little');at+=2
-            if size==65535:
-                if at!=len(data): break
-                at=begin
-                break
+        end=start;packets=0
+        while len(data)-end>=2:
+            size=int.from_bytes(data[end:end+2],'little')
             # Native SILK SDK packet buffer capacity; reject before native code.
-            if not 0<size<=1250 or at+size>len(data): break
-            at+=size;packets.append(data[begin:at])
-            if len(packets)>4500: break
-        valid_end=at==len(data) or (at+2==len(data) and data[at:]==b'\xff\xff')
-        if valid_end and packets and len(packets)<=4500 and sum(map(len,packets))==at-start:
-            count=len(packets)
+            if not 0<size<=1250 or size>len(data)-end-2: break
+            end+=2+size;packets+=1
+            if packets>MAX_PACKETS: break
+        if 0<packets<=MAX_PACKETS and _valid_tail(data,end):
             # Pinned pysilk 0.2.8 reads packets until EOF; its decoder does not
-            # consume the signed -1 terminator. Strip only validated framing.
-            framed=b'\x02#!SILK_V3'+b''.join(packets)
-            return framed,count
+            # consume the terminator or alignment padding after the last packet.
+            return b'\x02#!SILK_V3'+data[start:end],packets
     raise ValueError('SILK帧长度不完整或不支持，原始文件已保留')
+
+
+def _valid_tail(data,end):
+    length=len(data)-end
+    if length==0 or (length==2 and data[end:]==b'\xff\xff'): return True
+    return 2<=length<=MAX_ZERO_PADDING and length%2==0 and not any(data[end:])
 
 
 def validate_packets(raw):

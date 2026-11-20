@@ -20,6 +20,8 @@ namespace VoiceEngine
     {
         internal const int Rate = 24000;
         internal const int MaxPcm = Rate * 2 * 90;
+        private const int MaxPackets = 4500;
+        private const int MaxZeroPadding = 256;
         private static readonly byte[] SilkMagic = Encoding.ASCII.GetBytes("#!SILK_V3");
         private static readonly byte[] TencentMagic = { 0x02, (byte)'#', (byte)'!', (byte)'S', (byte)'I', (byte)'L', (byte)'K', (byte)'_', (byte)'V', (byte)'3' };
 
@@ -48,44 +50,38 @@ namespace VoiceEngine
             else if (data.Length > 9 && data[9] == '\n') starts.Add(10);
             foreach (int start in starts)
             {
-                int at = start;
-                var packets = new List<byte[]>();
-                while (at < data.Length)
+                int end = start;
+                int packets = 0;
+                while (data.Length - end >= 2)
                 {
-                    int begin = at;
-                    if (at + 2 > data.Length) break;
-                    short size = ReadInt16(data, at);
-                    at += 2;
-                    if (size == -1)
-                    {
-                        if (at != data.Length) break;
-                        at = begin;
-                        break;
-                    }
+                    short size = ReadInt16(data, end);
                     // Native SILK SDK packet buffer capacity; reject before native code.
-                    if (size <= 0 || size > 1250 || at + size > data.Length) break;
-                    at += size;
-                    packets.Add(Slice(data, begin, at - begin));
-                    if (packets.Count > 4500) break;
+                    if (size <= 0 || size > 1250 || size > data.Length - end - 2) break;
+                    end += 2 + size;
+                    if (++packets > MaxPackets) break;
                 }
-                bool validEnd = at == data.Length || (at + 2 == data.Length && data[at] == 0xff && data[at + 1] == 0xff);
-                if (validEnd && packets.Count > 0 && packets.Count <= 4500)
+                if (packets > 0 && packets <= MaxPackets && ValidTail(data, end))
                 {
-                    int sum = 0;
-                    foreach (var packet in packets) sum += packet.Length;
-                    if (sum == at - start)
-                    {
-                        // Pinned pysilk 0.2.8 reads packets until EOF; its decoder does
-                        // not consume the signed -1 terminator. Strip only validated framing.
-                        var framed = new byte[TencentMagic.Length + sum];
-                        Buffer.BlockCopy(TencentMagic, 0, framed, 0, TencentMagic.Length);
-                        int offset = TencentMagic.Length;
-                        foreach (var packet in packets) { Buffer.BlockCopy(packet, 0, framed, offset, packet.Length); offset += packet.Length; }
-                        return Tuple.Create(framed, packets.Count);
-                    }
+                    // Pass only complete packets to the SDK. Preserve the original blob for export.
+                    int packetBytes = end - start;
+                    var framed = new byte[TencentMagic.Length + packetBytes];
+                    Buffer.BlockCopy(TencentMagic, 0, framed, 0, TencentMagic.Length);
+                    Buffer.BlockCopy(data, start, framed, TencentMagic.Length, packetBytes);
+                    return Tuple.Create(framed, packets);
                 }
             }
             throw new InvalidDataException("SILK帧长度不完整或不支持，原始文件已保留");
+        }
+
+        private static bool ValidTail(byte[] data, int end)
+        {
+            int length = data.Length - end;
+            if (length == 0 || (length == 2 && ReadInt16(data, end) == -1)) return true;
+            // Some old recordings have zero-filled alignment after the final complete packet.
+            if (length < 2 || length > MaxZeroPadding || (length & 1) != 0) return false;
+            for (int i = end; i < data.Length; i++)
+                if (data[i] != 0) return false;
+            return true;
         }
 
         internal static int ValidatePackets(byte[] raw) { return PacketStream(raw).Item2; }

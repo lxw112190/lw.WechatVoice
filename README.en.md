@@ -16,6 +16,8 @@ The screenshot contains synthetic conversations and test audio only.
 
 The new **收藏语音** entry reads standalone and nested favorite voices into a separate snapshot session. Existing date filters, preview, WAV export and offline naming remain available. Only content-matched local files or unambiguous original-message audio are used; missing audio is reported. Conversion currently supports SILK, with originals retained on unsupported formats. See [favorites documentation](docs/favorites.md).
 
+Preview and WAV export also support older WeChat SILK recordings with short zero-filled tails. Retained SILK originals keep their original bytes.
+
 1. Extract the entire Windows deployment ZIP into a writable directory.
 2. Launch `WechatVoice.Workshop.exe`; .NET Framework 4.8 is required.
 3. Select an account you own or are authorized to access, confirm consent and connect while WeChat is logged in.

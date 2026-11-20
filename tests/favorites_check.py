@@ -21,7 +21,7 @@ def check(engine):
         root = Path(temp); account = root / 'account'; dbroot = account / 'db_storage'
         (dbroot / 'favorite').mkdir(parents=True); (dbroot / 'message').mkdir()
         cache = account / 'business/favorite/data'; cache.mkdir(parents=True)
-        data = tone(); digest = hashlib.md5(data).hexdigest()
+        data = tone() + bytes(38); digest = hashlib.md5(data).hexdigest()
         (cache / 'opaque-cache-name').write_bytes(data)
         # Misleading filename is not evidence: its bytes do not match the MD5.
         (cache / ('b' * 32)).write_bytes(data)

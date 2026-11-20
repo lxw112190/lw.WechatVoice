@@ -50,7 +50,7 @@ def main():
             shutil.copyfile(source, folder / "snapshots" / name)
     # The library fixture carries dummy blobs; export needs real SILK payloads.
     import sqlite3
-    blob = tone()
+    blob = tone() + bytes(128)
     with sqlite3.connect(str(folder / "snapshots" / "media_0.db")) as db:
         db.execute("UPDATE VoiceInfo SET voice_data=?", (blob,))
         db.commit()

@@ -63,7 +63,8 @@ internal static class CodecCheck
             {
                 Console.InputEncoding = inputEncoding;
                 string isolatedTarget = Path.Combine(root, "isolated-" + Guid.NewGuid().ToString("N") + ".wav");
-                double isolatedDuration = (double)Invoke(isolated, Path.Combine(multi, "source.silk"), isolatedTarget, new Action(() => { }));
+                string padded = Path.Combine(root, "padded-multi-max", "source.silk");
+                double isolatedDuration = (double)Invoke(isolated, padded, isolatedTarget, new Action(() => { }));
                 Require(BytesEqual(File.ReadAllBytes(isolatedTarget), File.ReadAllBytes(Path.Combine(multi, "expected.wav"))), "isolated decode bytes differ");
                 Require(Math.Abs(isolatedDuration - 1.0) < 1e-9, "isolated duration differs");
                 File.Delete(isolatedTarget);
